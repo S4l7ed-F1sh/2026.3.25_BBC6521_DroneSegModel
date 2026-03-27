@@ -1,6 +1,8 @@
 import os
 import matplotlib.pyplot as plt
 from src.logging.PhaseLogger import PhaseLogger
+import numpy as np
+import sys
 
 # Logger 用于模型训练过程中的日志记录，支持输出到控制台和文件。
 # 日志保存在 resources/logs/ 目录下，目录下有一个名为 title 的子目录，子目录下按照训练的阶段创建一系列子目录。
@@ -39,8 +41,22 @@ class Logger:
         self.current_phase_logger = None  # 当前活跃的 PhaseLogger
 
         # 随机生成 n_classes 个颜色，用于分割结果的可视化
-        color_list = plt.cm.get_cmap('tab10', n_classes).colors  # 使用 tab10 颜色映射生成 n_classes 个颜色
-        self.color_list = [color for color in color_list]  # 转换为列表形式
+        # 1. 获取颜色 (0-1 浮点数)
+        cmap = plt.cm.get_cmap('tab10', n_classes)
+        colors_float = cmap.colors
+
+        # 2. 转换为 0-255 整数，并展平列表
+        # 将 [(r,g,b), ...] 转换为 [r, g, b, r, g, b, ...] 且数值为 int
+        color_list_int = (np.array(colors_float) * 255).astype(int).flatten().tolist()
+
+        # 3. 补全调色板 (可选但推荐)
+        # PIL 的 P 模式调色板通常需要 768 个值 (256个颜色 * 3通道)
+        # 如果 n_classes < 256，剩下的用 0 填充
+        if len(color_list_int) < 768:
+            color_list_int += [0] * (768 - len(color_list_int))
+
+        self.color_list = color_list_int
+        # --- 结束 ---
 
     def start_new_phase(self, phase_name):
         """
@@ -59,6 +75,7 @@ class Logger:
         self.phase_loggers.append(new_logger)
         self.current_phase_logger = new_logger
         print(f"Started new logging phase: '{phase_name}'")
+        sys.stdout.flush()  # 确保日志立即输出到控制台
 
     def end_current_phase(self, model_to_save=None):
         """
@@ -94,6 +111,7 @@ class Logger:
                 with open(model_save_path, 'wb') as f:
                     pickle.dump(model_to_save, f)
             print(f"Model saved to {model_save_path}")
+            sys.stdout.flush()  # 确保日志立即输出到控制台
 
         # 3. 将当前 PhaseLogger 置为空，准备下一个阶段
         self.current_phase_logger = None
@@ -149,6 +167,7 @@ class Logger:
 
         if not self.phase_loggers:
             print("No phases were logged. Skipping final plot generation.")
+            sys.stdout.flush()  # 确保日志立即输出到控制台
             return
 
         # 为每种日志项创建一个总的图表
@@ -189,3 +208,4 @@ class Logger:
         plt.savefig(final_plot_path)
         plt.close()
         print(f"Final summary plot saved to {final_plot_path}")
+        sys.stdout.flush()  # 确保日志立即输出到控制台

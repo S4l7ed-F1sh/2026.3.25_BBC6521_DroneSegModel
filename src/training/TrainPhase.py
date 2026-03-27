@@ -75,3 +75,5 @@ def train_phase(
         images.cpu(),
         logging_info="Phase_End"
     )
+
+    del feat_images, labels, images, outputs, output_labels  # 释放内存

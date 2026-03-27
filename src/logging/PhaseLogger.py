@@ -1,5 +1,6 @@
 import os
 import csv
+import sys
 
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -91,6 +92,7 @@ class PhaseLogger:
         with open(self._log_file_path, 'a', encoding='utf-8') as f:
             f.write(timestamped_message + '\n')
         print(timestamped_message)
+        sys.stdout.flush()  # 确保日志立即输出到控制台
 
     def _print_report(self, report_content):
         """
@@ -101,6 +103,7 @@ class PhaseLogger:
         """
 
         print(report_content)
+        sys.stdout.flush()  # 确保日志立即输出到控制台
 
     def end_phase(self):
         """
@@ -157,23 +160,31 @@ class PhaseLogger:
         :return:
         """
 
-        for i in range(out_img.shape[0]):
+        # 确保张量在 CPU 上，并转换为 NumPy 数组
+        out_img_np = out_img.cpu().numpy()
+        lbl_img_np = lbl_img.cpu().numpy()
+        img_np = img.cpu().numpy()
 
+        for i in range(out_img.shape[0]):
             # 将 out_img 和 lbl_img 转换为 PNG 格式的 P 模式图像
-            out_pil = Image.fromarray(out_img[i].astype('uint8'), mode='P')
-            lbl_pil = Image.fromarray(lbl_img[i].astype('uint8'), mode='P')
+            out_pil = Image.fromarray(out_img_np[i].astype('uint8'), mode='P')
+            lbl_pil = Image.fromarray(lbl_img_np[i].astype('uint8'), mode='P')
 
             # 设置调色板
             out_pil.putpalette(self.color_list)
             lbl_pil.putpalette(self.color_list)
 
             # 将原始图像转换为 RGB 模式的 PIL 图像
-            img_pil = Image.fromarray(img[i].astype('uint8'), mode='RGB')
+            img_pil = Image.fromarray((img_np[i] * 255).clip(0, 255).astype('uint8'), mode='RGB')
+
+            # 创建保存目录（如果不存在）
+            samples_dir = os.path.join(self.base_dir, "samples")
+            os.makedirs(samples_dir, exist_ok=True)
 
             # 保存图片
-            out_pil.save(os.path.join(self.base_dir, f"/samples/out_{logging_info}_bid{i}_sample.png"))
-            lbl_pil.save(os.path.join(self.base_dir, f"/samples/lbl_{logging_info}_bid{i}_sample.png"))
-            img_pil.save(os.path.join(self.base_dir, f"/samples/img_{logging_info}_bid{i}_sample.png"))
+            out_pil.save(os.path.join(samples_dir, f"out_{logging_info}_bid{i}_sample.png"))
+            lbl_pil.save(os.path.join(samples_dir, f"lbl_{logging_info}_bid{i}_sample.png"))
+            img_pil.save(os.path.join(samples_dir, f"img_{logging_info}_bid{i}_sample.png"))
 
     def get_saving_log(self):
         """

@@ -94,12 +94,13 @@ def train_epoch(
     avg_miou = total_miou / batch_numbers
     avg_accuracy = total_accuracy / batch_numbers
 
-    logger.log(log_data=logging_info.update({
+    logging_info.update({
         'loss': total_loss,
         'miou': avg_miou,
         'accuracy': avg_accuracy,
         'time': total_time,
-    }))
+    })
+    logger.log(log_data=logging_info)
 
     if take_sample:
         model.eval()
@@ -115,3 +116,7 @@ def train_epoch(
             images.cpu(),
             logging_info=f"E{logging_info['epoch']}"
         )
+
+        del feat_images, labels, images, outputs, output_labels  # 释放内存
+
+    del total_loss, total_miou, total_accuracy  # 释放内存

@@ -34,6 +34,8 @@ class AtrousResidualBlock(nn.Module):
         # 将输入的原图像与调整后的特征图进行相加
         output = input + adjusted
 
+        del d1, d2, d3, combined, adjusted  # 释放内存
+
         return output
 
 
