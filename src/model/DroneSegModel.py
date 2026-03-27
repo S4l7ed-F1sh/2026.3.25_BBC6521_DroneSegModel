@@ -237,13 +237,42 @@ class DroneSegModel(torch.nn.Module):
 
             return final_tensor
 
-if __name__ == "__main__":
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+
+    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.reset_peak_memory_stats()
+
     model = DroneSegModel(n_classes=5, layers=4, max_channels=64, input_channels=32)
-    x = torch.randn(1, 22, 64, 64)  # 假设输入大小为 1x32x64x64
+    model = model.to(device)  # 👈 移动模型到 GPU
+    model.train()
+
+    criterion = nn.CrossEntropyLoss()
+
+    # 创建张量并移动到 GPU
+    x = torch.randn(1, 22, 736, 960, device=device)
+    y = torch.randint(0, 5, (1, 736, 960), device=device)
+
     output = model(x, mode='train')
-    print(output.shape)  # 应输出类似 torch.Size([1, 5, 64, 64]) 的结果
+    print(output.shape)
+    loss = criterion(output, y)
+    loss.backward()
 
+    # 第二次前向（pretrain 模式）
+    x2 = torch.randn(1, 22, 736, 960, device=device)
+    y2 = torch.randint(0, 5, (1, 736, 960), device=device)
+    output2 = model(x2, mode='pretrain')
+    print(output2.shape)
+    loss2 = criterion(output2, y2)
+    loss2.backward()
 
-    x = torch.randn(1, 22, 64, 64)  # 假设输入大小为 1x32x64x64
-    output = model(x, mode='pretrain')
-    print(output.shape)  # 应输出类似 torch.Size([1, 5, 64, 64]) 的结果
+    if torch.cuda.is_available():
+        peak_mem = torch.cuda.max_memory_allocated() / (1024 ** 2)  # MB
+        print(f"Peak GPU memory: {peak_mem:.2f} MB")
+    else:
+        print("Running on CPU, no GPU memory used.")
+
+if __name__ == "__main__":
+    main()

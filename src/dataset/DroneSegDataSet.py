@@ -66,7 +66,7 @@ class MyDataset(Dataset):
         lbl = np.array(label, dtype=np.int64)
 
         ext_feature = extract_features(img)
-        print("提取的特征维度: ", ext_feature.shape)
+        # print("提取的特征维度: ", ext_feature.shape)
 
         if self.transform:
             img = self.transform(img)
