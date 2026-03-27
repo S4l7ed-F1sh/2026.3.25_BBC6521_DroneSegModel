@@ -3,6 +3,7 @@ import torch
 import torch.optim as optim
 import torch.utils.data.dataloader as DataLoader
 import time
+import sys
 
 from src.logging.Logger import Logger
 from src.model.DroneSegModel import DroneSegModel
@@ -48,7 +49,10 @@ def train_phase(
     start_time = time.time()
     for epoch in range(epochs):
         logging_info['epoch'] = epoch + 1  # 更新当前 epoch 信息
-        logging_info['elapsed_time'] = time.time() - start_time  # 更新已用时间信息
+        logging_info['elapsed_time'] = round(time.time() - start_time, 4)  # 计算已用时间，单位为秒，并保留4位小数
+
+        print(f"[Epoch {epoch+1}/{epochs}] ", end="")
+        sys.stdout.flush()
 
         train_epoch(
             model=model,

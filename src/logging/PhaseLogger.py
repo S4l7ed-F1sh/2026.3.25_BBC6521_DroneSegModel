@@ -54,6 +54,25 @@ class PhaseLogger:
 
         self.color_list = color_list  # 存储颜色映射字典，供后续使用
 
+    def format_log_value(self, key, value):
+        """
+        根据键名对值进行格式化
+        """
+        # 定义需要特殊格式化的键及其格式
+        float_formats = {
+            'elapsed_time': '.4f',  # 时间保留4位小数
+            'loss': '.4f',  # 损失保留4位小数
+            'miou': '.4f',  # mIoU保留4位小数
+            'accuracy': '.4f'  # 准确率保留4位小数
+        }
+
+        # 如果该键需要特殊格式化，则应用它
+        if key in float_formats:
+            return f"{value:{float_formats[key]}}"
+        else:
+            # 否则返回原始值的字符串形式
+            return str(value)
+
     def log(self, log_data):
         """
         记录一条日志信息。
@@ -70,7 +89,7 @@ class PhaseLogger:
 
         self.saving_log.append(log_data)
 
-        output_str = f"[Phase {self.phase_name}]---" + ' | '.join([f"{key}: {log_data[key]}" for key in self.log_format])
+        output_str = f"[Phase {self.phase_name}]---" + ' | '.join([f"{key}: {self.format_log_value(key=key, value=log_data[key])}" for key in self.log_format])
 
         with open(self._log_file_path, 'a') as f:
             f.write(output_str + '\n')

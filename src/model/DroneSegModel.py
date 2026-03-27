@@ -7,7 +7,7 @@ from src.model.ConvAndReluLayer import CRLayer, CBNRLayer
 # 模型的结构设计思路：分为 layers 层 MultiResolutionLevel，每层的最大通道数为 max_channels。
 # 第 i 层的输入通道为 input_channels // (2**i)，输出通道为 max_channels。分辨率为输入图片分辨率的 (2**i) 分之一。
 class DroneSegModel(torch.nn.Module):
-    def __init__(self, n_classes=5, layers=4, max_channels=128, feat_channels=22):
+    def __init__(self, n_classes=5, layers=4, max_channels=64, feat_channels=22):
         super(DroneSegModel, self).__init__()
 
         self.n_classes = n_classes
@@ -16,7 +16,7 @@ class DroneSegModel(torch.nn.Module):
         self.feat_channels = feat_channels
 
         self.f2i_conv1 = CBNRLayer(in_channels=feat_channels, out_channels=max_channels*2, kernel_size=3, padding=1)
-        self.f2i_conv2 = CBNRLayer(in_channels=max_channels*2, out_channels=max_channels, kernel_size=3, padding=1)
+        self.f2i_conv2 = CBNRLayer(in_channels=max_channels*2, out_channels=max_channels, kernel_size=1, padding=0)
 
         # 每层每个模块的输入输出通道数比较复杂，用两个二维表动态计算一下
         self.in_c = [[0] * (layers + 3) for _ in range(layers)]
@@ -83,7 +83,7 @@ class DroneSegModel(torch.nn.Module):
 
         x = self.f2i_conv1(x)
         x = self.f2i_conv2(x)
-        print(f"输入特征图经过 f2i_conv1 和 f2i_conv2 后的形状: {x.shape}")
+        # print(f"输入特征图经过 f2i_conv1 和 f2i_conv2 后的形状: {x.shape}")
 
         if mode == 'pretrain':
             # 预训练模块随机启用其中一个层
@@ -110,7 +110,7 @@ class DroneSegModel(torch.nn.Module):
                 )
 
             # 完成后使用 end_convs 将通道数调整到 max_channels
-            x = self.end_convs[l](torch.cat([x, s], dim=1))
+            x = self.end_convs(torch.cat([x, s], dim=1))
 
             # 处理完成，经过多次线性插值上采样，恢复到输入图片的分辨率
             for i in range(l):
@@ -125,7 +125,7 @@ class DroneSegModel(torch.nn.Module):
             down_sample = [x]
             for i in range(self.layers-1):
                 down_sample.append(nn.AvgPool2d(kernel_size=2, stride=2)(down_sample[i]))
-                print(f"下采样后第 {i+1} 层的输入特征图形状: {down_sample[i+1].shape}")
+                # print(f"下采样后第 {i+1} 层的输入特征图形状: {down_sample[i+1].shape}")
 
             inputs = down_sample[:]  # 用来存放每层当前阶段的输入特征图，初始时为下采样得到的特征图列表
 
@@ -174,8 +174,8 @@ class DroneSegModel(torch.nn.Module):
                 # 当 j>0 时，说明已经处理完了第一层的所有阶段，接下来每处理完一层就将 min_layer 加 1，这样就能保证每层的模块在正确的阶段进行前向传播。
                 # 同时应该将已经处理完的层的最后一个阶段的输出特征图通过 end_convs 将通道数调整到 max_channels，方便后续的特征融合。
                 if j > 0:
-                    print(f"完成层 {min_layer} 的处理，当前阶段 {j}，输出特征图形状: {nxt_lvl[min_layer].shape}")
-                    print(f"完成层 {min_layer} 的处理，当前阶段 {j}，输出原始特征图形状: {down_sample[min_layer].shape}")
+                    # print(f"完成层 {min_layer} 的处理，当前阶段 {j}，输出特征图形状: {nxt_lvl[min_layer].shape}")
+                    # print(f"完成层 {min_layer} 的处理，当前阶段 {j}，输出原始特征图形状: {down_sample[min_layer].shape}")
                     new_tensor = torch.cat([nxt_lvl[min_layer], down_sample[min_layer]], dim=1)
                     for k in range(min_layer):
                         new_tensor = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=False)(new_tensor)

@@ -89,7 +89,7 @@ def train_epoch(
             loss.backward()
             optimizer.step()
 
-    total_time = time.time() - start_time
+    total_time = time.time() - start_time  # 计算总时间，单位为秒
 
     avg_miou = total_miou / batch_numbers
     avg_accuracy = total_accuracy / batch_numbers
