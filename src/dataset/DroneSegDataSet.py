@@ -70,7 +70,7 @@ class MyDataset(Dataset):
 
         if self.transform:
             img = self.transform(img)
-            lbl = self.transform(lbl)
+            lbl = self.transform(lbl).squeeze(0)  # 去掉单通道维度，保持与原始标签图像一致的维度
 
         return ext_feature, lbl, img
 
@@ -84,7 +84,7 @@ class MyDataset(Dataset):
         print("检查样本的标签图像尺寸: ", lbl.shape)
 
         fet_w, fet_h = fet.shape[2], fet.shape[1]
-        lbl_w, lbl_h = lbl.shape[2], lbl.shape[1]
+        lbl_w, lbl_h = lbl.shape[1], lbl.shape[0]
         img_w, img_h = img.shape[2], img.shape[1]
 
         fet_c = fet.shape[0] if len(img.shape) == 3 else 1
@@ -92,7 +92,7 @@ class MyDataset(Dataset):
         lbl_c = lbl.shape[0] if len(lbl.shape) == 3 else 1
 
         lbl_u = np.unique(lbl)
-        img_u = np.unique(img)
+        # img_u = np.unique(img)
 
         print('=' * 70)
         print(f"随机检查样本:")
@@ -100,7 +100,7 @@ class MyDataset(Dataset):
         print(f"label 图像尺寸: {lbl_w}x{lbl_h}，通道数: {lbl_c}")
         print(f"label 图像中值域: {lbl_u}")
         print(f"image 图像尺寸: {img_w}x{img_h}，通道数: {img_c}")
-        print(f"image 图像中值域: {img_u}")
+        # print(f"image 图像中值域: {img_u}")
         print('=' * 70)
 
 def main():
