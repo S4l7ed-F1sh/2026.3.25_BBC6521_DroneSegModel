@@ -20,3 +20,15 @@ class CBNRLayer(nn.Module):
 
     def forward(self, input):
         return self.relu(self.bn(self.conv(input)))
+
+class CBNDLayer(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, padding=0, dilation=1, dropout_rate=0.5):
+        super(CBNDLayer, self).__init__()
+
+        self.conv = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding, dilation=dilation)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout2d(p=dropout_rate)
+
+    def forward(self, input):
+        return self.dropout(self.relu(self.bn(self.conv(input))))

@@ -61,9 +61,10 @@ class PhaseLogger:
         # 定义需要特殊格式化的键及其格式
         float_formats = {
             'elapsed_time': '.4f',  # 时间保留4位小数
-            'loss': '.4f',  # 损失保留4位小数
-            'miou': '.4f',  # mIoU保留4位小数
-            'accuracy': '.4f'  # 准确率保留4位小数
+            'loss': '.4f',          # 损失保留4位小数
+            'miou': '.4f',          # mIoU保留4位小数
+            'accuracy': '.4f',      # 准确率保留4位小数
+            'time': '.4f',          # 时间保留4位小数
         }
 
         # 如果该键需要特殊格式化，则应用它
@@ -74,27 +75,20 @@ class PhaseLogger:
             return str(value)
 
     def log(self, log_data):
-        """
-        记录一条日志信息。
-
-        Args:
-            log_data (dict): 包含日志信息的字典，其键必须与 log_format 定义的相符。
-        """
         if not isinstance(log_data, dict):
             raise TypeError("log_data must be a dictionary.")
-
-        # 验证 log_data 的键是否与 log_format 一致
         if set(log_data.keys()) != set(self.log_format):
             raise ValueError(f"log_data keys {set(log_data.keys())} do not match log_format {set(self.log_format)}")
 
-        self.saving_log.append(log_data)
+        # 关键修复：存储独立副本，避免引用污染
+        self.saving_log.append(log_data.copy())  # ✅ 使用浅拷贝
 
-        output_str = f"[Phase {self.phase_name}]---" + ' | '.join([f"{key}: {self.format_log_value(key=key, value=log_data[key])}" for key in self.log_format])
-
+        output_str = f"[Phase {self.phase_name}]---" + ' | '.join(
+            [f"{key}: {self.format_log_value(key=key, value=log_data[key])}" for key in self.log_format]
+        )
         with open(self._log_file_path, 'a') as f:
             f.write(output_str + '\n')
 
-        # 如果达到输出频率，则打印报告
         current_round = len(self.saving_log)
         if current_round % self.output_frequency == 0:
             self._print_report(output_str)

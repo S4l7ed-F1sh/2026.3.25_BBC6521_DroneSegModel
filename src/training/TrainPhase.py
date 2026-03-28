@@ -49,7 +49,7 @@ def train_phase(
     start_time = time.time()
     for epoch in range(epochs):
         logging_info['epoch'] = epoch + 1  # 更新当前 epoch 信息
-        logging_info['elapsed_time'] = round(time.time() - start_time, 4)  # 计算已用时间，单位为秒，并保留4位小数
+        logging_info['elapsed_time'] = time.time() - start_time  # 计算已用时间，单位为秒，并保留4位小数
 
         print(f"[Epoch {epoch+1}/{epochs}] ", end="")
         sys.stdout.flush()
@@ -70,7 +70,7 @@ def train_phase(
 
     feat_images, labels, images = next(iter(dataloader))
     feat_images = feat_images.to(device)
-    outputs = model(feat_images, mode='pretrain' if is_pretrain else 'train')
+    outputs = model(feat_images)
     output_labels = torch.argmax(outputs, dim=1)
 
     logger.save_sample_image(
