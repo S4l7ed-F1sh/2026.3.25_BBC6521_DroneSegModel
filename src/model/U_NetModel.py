@@ -5,7 +5,7 @@ from src.model.ConvLayers import DoubleConv, Down, Up, OutConv
 class U_Net(nn.Module):
     """U-Net 模型，使用深度可分离卷积代替传统卷积，输出 1 通道信息，进行二分类任务，可以改变模型下采样的深度，深度范围为 2-4"""
 
-    def __init(self, in_channel, out_channel=1, dropout_rate=0.1, bilinear=True, depth=4):
+    def __init__(self, in_channel, out_channel=1, dropout_rate=0.1, bilinear=True, depth=4):
         """
             初始化 U-Net 模型。
 
@@ -73,10 +73,10 @@ class U_Net(nn.Module):
             x5 = self.down4(x4)
             x = self.up4(x5, x4)
 
-        if self.depth >= 3:
+        if self.depth > 3:
             x = self.up3(x, x3)
 
-        if self.depth >= 2:
+        if self.depth > 2:
             x = self.up2(x, x2)
 
         x = self.up1(x, x1)
