@@ -83,7 +83,7 @@ class PhaseLogger:
         # 关键修复：存储独立副本，避免引用污染
         self.saving_log.append(log_data.copy())  # ✅ 使用浅拷贝
 
-        output_str = f"[Phase {self.phase_name}]---" + ' | '.join(
+        output_str = f"[{self.phase_name}] --- " + ' | '.join(
             [f"{key}: {self.format_log_value(key=key, value=log_data[key])}" for key in self.log_format]
         )
         with open(self._log_file_path, 'a') as f:

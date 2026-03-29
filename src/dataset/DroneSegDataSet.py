@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from src.dataset.FeatureExtraction import extract_features
 from torchvision import transforms
+import torch
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 print(f"当前脚本路径: {current_file_dir}")
@@ -102,6 +103,31 @@ class MyDataset(Dataset):
         print(f"image 图像尺寸: {img_w}x{img_h}，通道数: {img_c}")
         # print(f"image 图像中值域: {img_u}")
         print('=' * 70)
+
+
+import torch
+
+
+def convert_to_binary_label(label_tensor, class_idx):
+    """
+    将多分类 Label (B, H, W) 转换为特定类别的二分类 Label (B, H, W)。
+
+    参数:
+        label_tensor (torch.Tensor): 原始标签，形状为 (B, H, W)，值域为 0~n-1，类型需为 Long
+        class_idx (int): 想要提取的目标类别索引 (0 ~ n-1)
+
+    返回:
+        torch.Tensor: 二分类标签，形状为 (B, H, W)，值为 0 (不是该类) 或 1 (是该类)
+    """
+    # 1. 比较操作：生成布尔掩码
+    # 如果像素值等于 class_idx，则为 True，否则为 False
+    # 结果形状：(B, H, W)
+    binary_mask = (label_tensor == class_idx)
+
+    # 2. 类型转换：将布尔值转换为整数 (0 和 1)
+    binary_mask = binary_mask.long()
+
+    return binary_mask
 
 def main():
     image_dir = 'drone_seg_dataset/classes_dataset/classes_dataset/original_images'

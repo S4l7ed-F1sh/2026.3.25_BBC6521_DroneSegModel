@@ -4,22 +4,23 @@ import torch.optim as optim
 import torch.utils.data.dataloader as DataLoader
 import time
 import sys
+import torch.nn as nn
+from typing import Optional
 
 from src.logging.Logger import Logger
-from src.model.DroneSegModel import DroneSegModel
 from src.training.TrainEpoch import train_epoch
 
 def train_phase(
-        model: DroneSegModel,
+        model: nn.Module,
         dataloader: DataLoader,
         logger: Logger,
         epochs: int,
-        is_pretrain: bool,
         sample_period: int,
         device: torch.device,
         logging_info: dict,
         criterion: torch.nn.Module,
         optimizer: optim.Optimizer = None,
+        label_transform: Optional[callable(torch.Tensor)] = None,
 ):
     """
         训练一个阶段（Phase）。
@@ -32,12 +33,12 @@ def train_phase(
     :param dataloader: 数据集
     :param logger: 日志记录器，用于记录训练或评估过程中的信息。
     :param epochs: 训练的 epoch 数量。
-    :param is_pretrain: 表示当前阶段是否是预训练阶段的布尔值。
     :param sample_period: 表示在训练过程中采样数据进行可视化的频率（例如每多少个 epoch 采样一次）。
     :param device: 设备（CPU 或 GPU），用于将数据和模型移动到适当的计算设备上。
     :param logging_info: 一个包含当前 epoch 和其他相关信息的字典，用于记录日志时使用。
     :param criterion: 损失函数，用于计算模型的损失值。
     :param optimizer: 优化器，用于更新模型的参数（仅在训练阶段使用）。
+    :param label_transform: 可选的标签变换函数，用于在训练前对标签进行预处理。
     :return:
     """
 
@@ -58,12 +59,12 @@ def train_phase(
             model=model,
             dataloader=dataloader,
             logger=logger,
-            is_pretrain=is_pretrain,
             take_sample=(epoch % sample_period == 0),  # 根据 sample_period 决定是否采样
             device=device,
             logging_info=logging_info,
             criterion=criterion,
             optimizer=optimizer,
+            label_transform=label_transform,
         )
 
     model.eval()

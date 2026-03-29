@@ -40,23 +40,70 @@ class Logger:
         self.phase_loggers = []  # 用于存储不同阶段的 PhaseLogger 对象
         self.current_phase_logger = None  # 当前活跃的 PhaseLogger
 
-        # 随机生成 n_classes 个颜色，用于分割结果的可视化
-        # 1. 获取颜色 (0-1 浮点数)
-        cmap = plt.cm.get_cmap('tab10', n_classes)
-        colors_float = cmap.colors
+        # --- 颜色生成与保存逻辑 (已针对 24 类优化) ---
+
+        # 1. 获取颜色
+        # 修改点：将 'tab10' 替换为 'gist_ncar'。
+        # 'gist_ncar' 能够生成多达 20-30 种区分度较好的颜色，适合你的 24 类需求。
+        # 如果 n_classes <= 20，它会非常清晰；如果接近 24，颜色依然会有区分度。
+        cmap = plt.cm.get_cmap('gist_ncar', n_classes)
+
+        # 获取 RGBA 列表，并只取前 3 个通道 (RGB)
+        # 注意：gist_ncar 返回的是 RGBA，我们需要去掉 Alpha 通道
+        colors_float = [cmap(i)[:3] for i in range(n_classes)]
 
         # 2. 转换为 0-255 整数，并展平列表
-        # 将 [(r,g,b), ...] 转换为 [r, g, b, r, g, b, ...] 且数值为 int
+        # 将 [(r,g,b), ...] 转换为 [r, g, b, r, g, b, ...]
         color_list_int = (np.array(colors_float) * 255).astype(int).flatten().tolist()
 
-        # 3. 补全调色板 (可选但推荐)
-        # PIL 的 P 模式调色板通常需要 768 个值 (256个颜色 * 3通道)
-        # 如果 n_classes < 256，剩下的用 0 填充
+        # 3. 补全调色板 (PIL P 模式需要 768 个值)
         if len(color_list_int) < 768:
             color_list_int += [0] * (768 - len(color_list_int))
 
         self.color_list = color_list_int
+
+        # 4. 生成并保存颜色图例图片
+        # 传入 colors_float 用于绘图
+        self._save_color_palette(colors_float, n_classes)
         # --- 结束 ---
+
+    def _save_color_palette(self, colors_float, n_classes):
+        """
+        创建并保存颜色图例。
+        针对最多 24 个类别优化了图片尺寸。
+        """
+        # 修改点：调整图片尺寸以适应更多类别
+        # 每个类别高度 40 像素，宽度 350 像素 (稍微加宽以容纳文字)
+        height = max(150, n_classes * 40)
+        width = 350
+
+        fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
+
+        for i in range(n_classes):
+            # 绘制色块
+            rect = plt.Rectangle((0, i), 1, 1, facecolor=colors_float[i])
+            ax.add_patch(rect)
+
+            # 添加文字标签
+            # 稍微调整文字位置，确保清晰
+            ax.text(1.05, i + 0.5, f'Class {i}', va='center', ha='left', fontsize=11, color='black')
+
+        ax.set_xlim(0, 2.5)  # 留出更多空间给文字
+        ax.set_ylim(0, n_classes)
+
+        ax.axis('off')
+        ax.invert_yaxis()  # Class 0 在最上面
+
+        plt.title(f"Segmentation Color Map ({n_classes} Classes)", fontsize=14, pad=20)
+
+        save_path = os.path.join(self.base_dir, 'color_palette.png')
+
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=100)
+        plt.close(fig)
+
+        # 打印提示，确认使用了哪种色板
+        print(f"颜色图例已保存至: {save_path} (使用色板: gist_ncar)")
 
     def start_new_phase(self, phase_name):
         """
