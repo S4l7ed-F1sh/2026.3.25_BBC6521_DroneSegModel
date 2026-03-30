@@ -37,6 +37,7 @@ def train_session(
             'phase', 'epoch', 'elapsed_time', 'loss', 'miou', 'accuracy', 'time'
         ],
         output_frequency=output_frequency,
+        n_classes=2,
     )
 
     for phase_idx, (config) in enumerate(train_config):

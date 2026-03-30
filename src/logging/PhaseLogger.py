@@ -60,11 +60,9 @@ class PhaseLogger:
         """
         # 定义需要特殊格式化的键及其格式
         float_formats = {
-            'elapsed_time': '.4f',  # 时间保留4位小数
             'loss': '.4f',          # 损失保留4位小数
             'miou': '.4f',          # mIoU保留4位小数
             'accuracy': '.4f',      # 准确率保留4位小数
-            'time': '.4f',          # 时间保留4位小数
         }
 
         # 如果该键需要特殊格式化，则应用它

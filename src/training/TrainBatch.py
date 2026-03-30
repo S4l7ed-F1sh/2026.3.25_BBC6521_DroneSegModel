@@ -66,4 +66,6 @@ def train_batch(
     batch_miou = compute_miou(torch.argmax(outputs, dim=1), batch_lbl)
     batch_accuracy = (torch.argmax(outputs, dim=1) == batch_lbl).float().mean().item()
 
+    del batch_img, batch_lbl, outputs  # 释放内存
+
     return loss.item(), batch_miou, batch_accuracy
