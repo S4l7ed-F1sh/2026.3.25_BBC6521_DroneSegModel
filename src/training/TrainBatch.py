@@ -33,7 +33,6 @@ def train_batch(
         model: nn.Module,
         batch_img: torch.Tensor,
         batch_lbl: torch.Tensor,
-        device: torch.device,
         criterion: nn.Module,
         optimizer: torch.optim.Optimizer,
 ):
@@ -42,17 +41,12 @@ def train_batch(
     :param model: 要训练的模型。
     :param batch_img: 输入的图像数据，形状为 (B, C, H, W)。
     :param batch_lbl: 输入的标签数据，形状为 (B, H, W)。
-    :param device: 设备（CPU 或 GPU），用于将数据和模型移动到适当的计算设备上。
     :param criterion: 损失函数，用于计算模型的损失值。
     :param optimizer: 优化器，用于更新模型的参数。
     :return:
     """
 
-    model.to(device)
     model.train()
-
-    batch_img = batch_img.to(device)
-    batch_lbl = batch_lbl.to(device)
 
     optimizer.zero_grad()
 
@@ -63,8 +57,18 @@ def train_batch(
     loss.backward()
     optimizer.step()
 
-    batch_miou = compute_miou(torch.argmax(outputs, dim=1), batch_lbl)
-    batch_accuracy = (torch.argmax(outputs, dim=1) == batch_lbl).float().mean().item()
+    n_classes = outputs.shape[1]  # 获取类别数量
+
+    if len(batch_lbl.shape) == 4:
+        if (batch_lbl.shape[1] == 1):
+            batch_lbl = batch_lbl.squeeze(1)  # 从 (B, 1, H, W) 转换为 (B, H, W)
+        else:
+            batch_lbl = torch.argmax(batch_lbl, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
+    batch_lbl = batch_lbl.detach().cpu()  # 将标签移动到 CPU 上进行计算
+    outputs = torch.argmax(outputs, dim=1).cpu()  # 转换为 (B, H, W)，并移动到 CPU 上进行计算
+
+    batch_miou = compute_miou(outputs, batch_lbl, num_classes=n_classes)
+    batch_accuracy = (outputs == batch_lbl).float().mean().item()
 
     del batch_img, batch_lbl, outputs  # 释放内存
 

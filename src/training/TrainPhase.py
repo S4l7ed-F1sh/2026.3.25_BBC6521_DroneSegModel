@@ -42,10 +42,7 @@ def train_phase(
     :return:
     """
 
-    model.to(device)
     model.train()
-
-    criterion.to(device)
 
     start_time = time.time()
     for epoch in range(epochs):
@@ -71,14 +68,24 @@ def train_phase(
 
     feat_images, labels, images = next(iter(dataloader))
     feat_images = feat_images.to(device)
+
+    if label_transform is not None:
+        labels = label_transform(labels)
+
     outputs = model(feat_images)
-    output_labels = torch.argmax(outputs, dim=1)
+
+    output_labels = torch.argmax(outputs, dim=1).detach().cpu()
+    if len(labels.shape) == 4:
+        if (labels.shape[1] == 1):
+            labels = labels.squeeze(1)  # 从 (B, 1, H, W) 转换为 (B, H, W)
+        else:
+            labels = torch.argmax(labels, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
 
     logger.save_sample_image(
         output_labels,
         labels.cpu(),
         images.cpu(),
-        logging_info="Phase_End"
+        logging_info=f"Phase End"
     )
 
     del feat_images, labels, images, outputs, output_labels  # 释放内存

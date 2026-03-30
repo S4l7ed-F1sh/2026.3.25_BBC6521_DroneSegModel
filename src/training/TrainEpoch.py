@@ -37,8 +37,6 @@ def train_epoch(
     :param label_transform: 可选的标签变换函数，用于在训练前对标签进行预处理。
     :return:
     """
-    # 在传入的时候保证模型已经被移动到正确的设备上，这里再确认一下
-    model.to(device)
     model.train()
 
     batch_numbers = len(dataloader)
@@ -55,9 +53,8 @@ def train_epoch(
 
             batch_loss, batch_miou, batch_accuracy = train_batch(
                 model=model,
-                batch_img=feat_images,
+                batch_img=feat_images.to(device),
                 batch_lbl=labels,
-                device=device,
                 criterion=criterion,
                 optimizer=optimizer,
             )
@@ -91,10 +88,12 @@ def train_epoch(
 
         outputs = model(feat_images)
 
-        if outputs.shape[1] > 1:  # 如果输出是多类别的，取 argmax
-            output_labels = torch.argmax(outputs, dim=1)
-        else:
-            output_labels = (outputs > 0.5).long().squeeze(1)  # 二分类的情况，假设输出是 (B, 1, H, W)
+        output_labels = torch.argmax(outputs, dim=1).detach().cpu()
+        if len(labels.shape) == 4:
+            if (labels.shape[1] == 1):
+                labels = labels.squeeze(1)  # 从 (B, 1, H, W) 转换为 (B, H, W)
+            else:
+                labels = torch.argmax(labels, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
 
         logger.save_sample_image(
             output_labels,
