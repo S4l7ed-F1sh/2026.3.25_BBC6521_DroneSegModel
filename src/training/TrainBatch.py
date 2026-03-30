@@ -40,7 +40,7 @@ def train_batch(
         训练一个批次。
     :param model: 要训练的模型。
     :param batch_img: 输入的图像数据，形状为 (B, C, H, W)。
-    :param batch_lbl: 输入的标签数据，形状为 (B, H, W)。
+    :param batch_lbl: 输入的标签数据，形状为 (B, C, H, W)。
     :param criterion: 损失函数，用于计算模型的损失值。
     :param optimizer: 优化器，用于更新模型的参数。
     :return:

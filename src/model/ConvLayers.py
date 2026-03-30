@@ -96,7 +96,7 @@ class CBNDLayer(nn.Module):
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
-            nn.Dropout2d(p=dropout_rate, inplace=False)
+            # nn.Dropout2d(p=dropout_rate, inplace=False),
         )
 
     def forward(self, x):

@@ -5,11 +5,13 @@ from torch.utils.data import DataLoader
 from src.logging.Logger import Logger
 from src.training.TrainPhase import train_phase
 from typing import Optional
+import gc
 
 default_train_config = [
-    {'lr': 0.1, 'momentum': 0.85, 'epochs': 20},
+    # {'lr': 0.1, 'momentum': 0.85, 'epochs': 20},
+    # {'lr': 0.01, 'momentum': 0.9, 'epochs': 60},
 
-    {'lr': 0.01, 'momentum': 0.9, 'epochs': 60},
+    {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
     {'lr': 0.005, 'momentum': 0.9, 'epochs': 80},
 
     {'lr': 0.001, 'momentum': 0.9, 'epochs': 80},
@@ -70,4 +72,5 @@ def train_session(
         logger.end_current_phase(model_to_save=model)
 
     logger.finalize_and_plot_all()
+    gc.collect()
     torch.cuda.empty_cache()
