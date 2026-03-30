@@ -27,7 +27,7 @@ class MultiU_Net(nn.Module):
             for i in range(n_classes)
         ])
 
-        self.combine_conv0 = CBNDLayer(in_ch=n_classes, out_ch=64, dropout_rate=dropout_rate)
+        self.combine_conv0 = CBNDLayer(in_ch=n_classes*2, out_ch=64, dropout_rate=dropout_rate)
         self.combine_conv1 = CBNDLayer(in_ch=64, out_ch=n_classes, dropout_rate=dropout_rate)
 
     def forward(self, x):

@@ -90,7 +90,11 @@ def train_epoch(
             labels = label_transform(labels)
 
         outputs = model(feat_images)
-        output_labels = torch.argmax(outputs, dim=1)
+
+        if outputs.shape[1] > 1:  # 如果输出是多类别的，取 argmax
+            output_labels = torch.argmax(outputs, dim=1)
+        else:
+            output_labels = (outputs > 0.5).long().squeeze(1)  # 二分类的情况，假设输出是 (B, 1, H, W)
 
         logger.save_sample_image(
             output_labels,

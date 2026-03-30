@@ -176,6 +176,9 @@ class PhaseLogger:
         lbl_img_np = lbl_img.cpu().numpy()
         img_np = img.cpu().numpy()
 
+        if len(lbl_img_np.shape) == 4:
+            lbl_img_np = lbl_img_np.squeeze(1)  # 去掉单通道维度，保持与原始标签图像一致的维度
+
         for i in range(out_img.shape[0]):
             # 将 out_img 和 lbl_img 转换为 PNG 格式的 P 模式图像
             out_pil = Image.fromarray(out_img_np[i].astype('uint8'), mode='P')
