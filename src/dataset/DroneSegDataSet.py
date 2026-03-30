@@ -12,9 +12,10 @@ project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..'))
 print(f"项目根路径: {project_root}")
 
 class MyDataset(Dataset):
-    def __init__(self, image_dir, label_dir, transform=None):
-        image_dir = os.path.join(project_root, 'resources/dataset', image_dir)
-        label_dir = os.path.join(project_root, 'resources/dataset', label_dir)
+    def __init__(self, image_dir, label_dir, transform=None, ds_not_in_resources=False):
+        if not ds_not_in_resources:
+            image_dir = os.path.join(project_root, 'resources/dataset', image_dir)
+            label_dir = os.path.join(project_root, 'resources/dataset', label_dir)
 
         if not os.path.exists(image_dir) or not os.path.exists(label_dir):
             print(f"警告：检测到数据集图像目录或标签目录不存在！请检查以下路径是否正确：")
