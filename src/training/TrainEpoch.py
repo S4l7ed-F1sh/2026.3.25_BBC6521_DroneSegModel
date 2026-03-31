@@ -20,7 +20,7 @@ def train_epoch(
         take_sample: bool,
         device: torch.device,
         logging_info: dict,
-        criterion: nn.Module,
+        criterion,
         optimizer: torch.optim.Optimizer = None,
         label_transform: Optional[callable(torch.Tensor)] = None,
 ):

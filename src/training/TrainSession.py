@@ -22,7 +22,7 @@ default_train_config = [
 def train_session(
         model: nn.Module,
         dataloader: DataLoader,
-        criterion: nn.Module,
+        criterion,
         title: str,
         device: torch.device,
         train_config: list[dict] = None,

@@ -33,7 +33,7 @@ def train_batch(
         model: nn.Module,
         batch_img: torch.Tensor,
         batch_lbl: torch.Tensor,
-        criterion: nn.Module,
+        criterion,
         optimizer: torch.optim.Optimizer,
 ):
     """

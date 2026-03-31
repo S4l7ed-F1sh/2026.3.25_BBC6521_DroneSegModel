@@ -18,7 +18,7 @@ def train_phase(
         sample_period: int,
         device: torch.device,
         logging_info: dict,
-        criterion: torch.nn.Module,
+        criterion,
         optimizer: optim.Optimizer = None,
         label_transform: Optional[callable(torch.Tensor)] = None,
 ):
