@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 from src.dataset.FeatureExtraction import extract_features
 from torchvision import transforms
-import torch
+from src.dataset.DataReinforcement import data_augmentation
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 print(f"当前脚本路径: {current_file_dir}")
@@ -12,7 +12,7 @@ project_root = os.path.abspath(os.path.join(current_file_dir, '..', '..'))
 print(f"项目根路径: {project_root}")
 
 class MyDataset(Dataset):
-    def __init__(self, image_dir, label_dir, transform=None, ds_not_in_resources=False):
+    def __init__(self, image_dir, label_dir, transform=None, ds_not_in_resources=False, data_enforcement=False):
         if not ds_not_in_resources:
             image_dir = os.path.join(project_root, 'resources/dataset', image_dir)
             label_dir = os.path.join(project_root, 'resources/dataset', label_dir)
@@ -26,6 +26,7 @@ class MyDataset(Dataset):
         self.image_dir = image_dir
         self.label_dir = label_dir
         self.transform = transform
+        self.data_enforcement = data_enforcement
 
         image_files_list = os.listdir(self.image_dir)
         label_files_list = os.listdir(self.label_dir)
@@ -51,9 +52,14 @@ class MyDataset(Dataset):
         print(f"成功匹配文件: {', '.join(self.files[:3]) + (f' 等 {len(self.files)} 个文件' if len(self.files) > 3 else '')}")
 
     def __len__(self):
-        return len(self.files)
+        if not self.data_enforcement:
+            return len(self.files)
+        else:
+            return len(self.files) * 4  # 强制扩充数据集大小为原来的4倍，以增加训练样本数量
 
     def __getitem__(self, idx):
+        idx %= len(self.files)  # 确保索引在有效范围内，适用于数据增强后的索引扩展
+
         image_path = os.path.join(self.image_dir, self.files[idx])
         label_path = os.path.join(self.label_dir, self.files[idx])
 
@@ -66,6 +72,8 @@ class MyDataset(Dataset):
 
         img = np.array(image)
         lbl = np.array(label, dtype=np.int64)
+
+        img, lbl = data_augmentation(img, lbl)
 
         ext_feature = extract_features(img)
         # print("提取的特征维度: ", ext_feature.shape)
@@ -104,9 +112,6 @@ class MyDataset(Dataset):
         print(f"image 图像尺寸: {img_w}x{img_h}，通道数: {img_c}")
         # print(f"image 图像中值域: {img_u}")
         print('=' * 70)
-
-
-import torch
 
 
 def convert_to_binary_label(label_tensor, class_idx):

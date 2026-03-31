@@ -26,7 +26,7 @@ def compute_miou(preds, labels, num_classes=5):
 
         ious.append(iou)
 
-    miou = torch.tensor(ious).nanmean().item()  # 计算 mIoU，忽略 NaN 值
+    miou = torch.tensor(ious).nanmean()  # 计算 mIoU，忽略 NaN 值
     return miou
 
 def train_batch(
@@ -67,7 +67,7 @@ def train_batch(
     batch_lbl = batch_lbl.detach().cpu()  # 将标签移动到 CPU 上进行计算
     outputs = torch.argmax(outputs, dim=1).cpu()  # 转换为 (B, H, W)，并移动到 CPU 上进行计算
 
-    batch_miou = compute_miou(outputs, batch_lbl, num_classes=n_classes)
+    batch_miou = compute_miou(outputs, batch_lbl, num_classes=n_classes).item()
     batch_accuracy = (outputs == batch_lbl).float().mean().item()
 
     del batch_img, batch_lbl, outputs  # 释放内存
