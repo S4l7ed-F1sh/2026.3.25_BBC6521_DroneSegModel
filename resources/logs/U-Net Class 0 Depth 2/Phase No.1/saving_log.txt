@@ -1,1 +1,0 @@
-[Phase No.1] Phase 0 Starting | lr: 0.1, momentum: 0.85, epoch number: 20
