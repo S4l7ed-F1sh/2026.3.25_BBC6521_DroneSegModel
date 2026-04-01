@@ -53,7 +53,7 @@ def train_phase(
         sys.stdout.flush()
 
         train_epoch(
-            model=model,
+            model=model.to(device),
             dataloader=dataloader,
             logger=logger,
             take_sample=(epoch % sample_period == 0),  # 根据 sample_period 决定是否采样
@@ -69,12 +69,9 @@ def train_phase(
     with torch.no_grad():
 
         feat_images, labels, images = next(iter(dataloader))
-        feat_images = feat_images.to(device)
+        feat_images, labels, images = feat_images.to(device), labels.to(device), images.to(device)
 
-        labels = labels.cpu()
-        images = images.cpu()
-
-        if label_transform is not None:
+        if label_transform:
             labels = label_transform(labels)
 
         outputs = model(feat_images)

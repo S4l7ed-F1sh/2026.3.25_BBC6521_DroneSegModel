@@ -21,7 +21,7 @@ def criterion(output: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
     iou_loss = 1 - compute_miou(output_labels.cpu(), label_labels.cpu(), num_classes=output.shape[1])  # 计算 IoU Loss
 
     # 总损失是三者的加权和，这里权重都设为1，可以根据需要调整
-    total_loss = bce_loss + 1.5 * dice_loss.mean() + 2.0 * iou_loss.mean()
+    total_loss = bce_loss + dice_loss.mean() + iou_loss.mean()
 
     del output, label, output_sigmoid, intersection, union, output_labels, label_labels  # 释放内存
 

@@ -1,77 +1,76 @@
 import numpy as np
 import random
+from PIL import Image
 
 
 def data_augmentation(image, label, h_flip_prob=0.5, v_flip_prob=0.5,
-                      stretch_range=(0.9, 1.1), color_jitter_prob=0.3):
+                      stretch_factor=1.2, color_jitter_prob=0.3):
     """
-    语义分割数据增强函数（保持几何一致性）
+    语义分割数据增强函数（严格保持输出尺寸一致）
 
-    参数:
-        image: np.array (H, W, 3) 原始图像
-        label: np.array (H, W) 对应的标签图
-        h_flip_prob: 水平翻转概率
-        v_flip_prob: 垂直翻转概率
-        stretch_range: 拉伸比例范围(最小值, 最大值)
-        color_jitter_prob: 色彩抖动概率
-
-    返回:
-        augmented_image, augmented_label: 增强后的图像和标签
+    修改说明：
+    - 移除了收缩操作，只允许放大后中心裁剪，确保输出分辨率不变。
     """
-    # 1. 水平翻转
+    # 1. 类型安全检查
+    if image.dtype != np.uint8:
+        image = image.astype(np.uint8)
+    if label.dtype != np.uint8:
+        label = label.astype(np.uint8)
+
+    # 记录原始尺寸，用于最后恢复
+    orig_h, orig_w = image.shape[:2]
+
+    # 2. 水平翻转
     if random.random() < h_flip_prob:
         image = np.fliplr(image).copy()
         label = np.fliplr(label).copy()
 
-    # 2. 垂直翻转
+    # 3. 垂直翻转
     if random.random() < v_flip_prob:
         image = np.flipud(image).copy()
         label = np.flipud(label).copy()
 
-    # 3. 水平/垂直拉伸（保持几何一致性）
-    if random.random() < 0.5:  # 50%概率进行拉伸
-        h, w = image.shape[:2]
+    # 4. 随机拉伸（只放大，后接中心裁剪）
+    if random.random() < 0.5:
+        scale = random.uniform(1.0, stretch_factor)  # 只生成 >= 1.0 的缩放因子
+
         # 随机选择水平或垂直拉伸
         if random.random() < 0.5:  # 水平拉伸
-            scale = random.uniform(*stretch_range)
-            new_w = int(w * scale)
-            # 使用最近邻插值保持标签整数性
-            image = np.array(Image.fromarray(image).resize((new_w, h),
-                                                           Image.BICUBIC))
-            label = np.array(Image.fromarray(label).resize((new_w, h),
-                                                           Image.NEAREST))
+            new_w = int(orig_w * scale)
+            target_size = (new_w, orig_h)  # PIL resize 需要 (W, H)
+
+            image = np.array(Image.fromarray(image).resize(target_size, Image.BICUBIC))
+            label = np.array(Image.fromarray(label).resize(target_size, Image.NEAREST))
         else:  # 垂直拉伸
-            scale = random.uniform(*stretch_range)
-            new_h = int(h * scale)
-            image = np.array(Image.fromarray(image).resize((w, new_h),
-                                                           Image.BICUBIC))
-            label = np.array(Image.fromarray(label).resize((w, new_h),
-                                                           Image.NEAREST))
+            new_h = int(orig_h * scale)
+            target_size = (orig_w, new_h)
 
-        # 裁剪回原始尺寸（中心裁剪）
-        h, w = image.shape[:2]
-        start_x = max(0, (w - image.shape[1]) // 2)
-        start_y = max(0, (h - image.shape[0]) // 2)
-        image = image[start_y:start_y + image.shape[0], start_x:start_x + image.shape[1]]
-        label = label[start_y:start_y + label.shape[0], start_x:start_x + label.shape[1]]
+            image = np.array(Image.fromarray(image).resize(target_size, Image.BICUBIC))
+            label = np.array(Image.fromarray(label).resize(target_size, Image.NEAREST))
 
-    # 4. 色彩抖动（仅对图像）
+        # --- 关键修正：中心裁剪回原始尺寸 ---
+        cur_h, cur_w = image.shape[:2]
+
+        # 计算中心裁剪的起始点
+        start_x = (cur_w - orig_w) // 2
+        start_y = (cur_h - orig_h) // 2
+
+        # 执行裁剪，确保输出尺寸严格等于 orig_h, orig_w
+        image = image[start_y:start_y + orig_h, start_x:start_x + orig_w]
+        label = label[start_y:start_y + orig_h, start_x:start_x + orig_w]
+
+    # 5. 色彩抖动
     if random.random() < color_jitter_prob:
-        # 亮度调整
         brightness = random.uniform(0.8, 1.2)
         image = np.clip(image * brightness, 0, 255).astype(np.uint8)
 
-        # 对比度调整
         contrast = random.uniform(0.8, 1.2)
-        mean = np.mean(image, axis=(0, 1), keepdims=True)
-        image = np.clip((image - mean) * contrast + mean, 0, 255).astype(np.uint8)
+        mean_val = np.mean(image, axis=(0, 1), keepdims=True)
+        image = np.clip((image - mean_val) * contrast + mean_val, 0, 255).astype(np.uint8)
 
-    # 5. 极弱高斯噪声（仅对图像）
-    if random.random() < 0.2:  # 20%概率添加噪声
+    # 6. 极弱高斯噪声
+    if random.random() < 0.2:
         noise = np.random.normal(0, 5, image.shape).astype(np.float32)
-        image = np.clip(image + noise, 0, 255).astype(np.uint8)
+        image = np.clip(image.astype(np.float32) + noise, 0, 255).astype(np.uint8)
 
     return image, label
-
-# 使用示例
-# augmented_img, augmented_lbl = data_augmentation(original_img, original_lbl)
