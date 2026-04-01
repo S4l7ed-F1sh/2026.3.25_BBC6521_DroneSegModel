@@ -3,11 +3,11 @@ import torch.nn as nn
 
 # 改进版本 U-Net，使用深度可分离卷积代替传统卷积，进行二分类分割任务
 
-class DeepwiseSeparableConv(nn.Module):
+class DepthwiseSeparableConv(nn.Module):
     """深度可分离卷积：Depthwise Conv -> Pointwise Conv"""
 
     def __init__(self, in_ch, out_ch, dropout_rate):
-        super(DeepwiseSeparableConv, self).__init__()
+        super(DepthwiseSeparableConv, self).__init__()
         self.depthwise = nn.Sequential(
             nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1, groups=in_ch),
             nn.BatchNorm2d(in_ch),
@@ -26,15 +26,37 @@ class DeepwiseSeparableConv(nn.Module):
         x = self.pointwise(x)
         return x
 
+class CBNDLayer(nn.Module):
+    """卷积 -> BatchNorm -> ReLU -> Dropout"""
+
+    def __init__(self, in_ch, out_ch, dropout_rate):
+        super(CBNDLayer, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+            nn.Dropout2d(p=dropout_rate, inplace=False),
+        )
+
+    def forward(self, x):
+        return self.conv(x)
+
 class DoubleConv(nn.Module):
     """双卷积模块，使用深度可分离卷积替代传统卷积"""
 
-    def __init__(self, in_ch, out_ch, dropout_rate):
+    def __init__(self, in_ch, out_ch, dropout_rate, depthwise_separable=True):
         super(DoubleConv, self).__init__()
-        self.conv = nn.Sequential(
-            DeepwiseSeparableConv(in_ch, out_ch, dropout_rate),
-            DeepwiseSeparableConv(out_ch, out_ch, dropout_rate)
-        )
+
+        if depthwise_separable:
+            self.conv = nn.Sequential(
+                DepthwiseSeparableConv(in_ch, out_ch, dropout_rate),
+                DepthwiseSeparableConv(out_ch, out_ch, dropout_rate),
+            )
+        else:
+            self.conv = nn.Sequential(
+                CBNDLayer(in_ch, out_ch, dropout_rate),
+                CBNDLayer(out_ch, out_ch, dropout_rate),
+            )
 
     def forward(self, x):
         return self.conv(x)
@@ -42,11 +64,11 @@ class DoubleConv(nn.Module):
 class Down(nn.Module):
     """下采样模块：MaxPool -> DoubleConv"""
 
-    def __init__(self, in_ch, out_ch, dropout_rate):
+    def __init__(self, in_ch, out_ch, dropout_rate, depthwise_separable=True):
         super(Down, self).__init__()
         self.mpconv = nn.Sequential(
             nn.MaxPool2d(2),
-            DoubleConv(in_ch, out_ch, dropout_rate)
+            DoubleConv(in_ch, out_ch, dropout_rate, depthwise_separable=depthwise_separable)
         )
 
     def forward(self, x):
@@ -55,7 +77,7 @@ class Down(nn.Module):
 class Up(nn.Module):
     """上采样模块：Upsample -> Conv -> Concat -> DoubleConv"""
 
-    def __init__(self, in_ch, out_ch, dropout_rate, bilinear=True):
+    def __init__(self, in_ch, out_ch, dropout_rate, bilinear=True, depthwise_separable=True):
         super(Up, self).__init__()
 
         if bilinear:
@@ -63,7 +85,7 @@ class Up(nn.Module):
         else:
             self.up = nn.ConvTranspose2d(in_ch // 2, in_ch // 2, 2, stride=2)
 
-        self.conv = DoubleConv(in_ch, out_ch, dropout_rate)  # in_ch = skip_connection + upsampled
+        self.conv = DoubleConv(in_ch, out_ch, dropout_rate, depthwise_separable=depthwise_separable)  # in_ch = skip_connection + upsampled
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
@@ -80,24 +102,12 @@ class Up(nn.Module):
 class OutConv(nn.Module):
     """输出卷积模块，使用深度可分离卷积替代传统卷积，输出通道数为 1，适用于二分类分割任务"""
 
-    def __init__(self, in_ch, out_ch, dropout_rate):
+    def __init__(self, in_ch, out_ch, dropout_rate, depthwise_separable=True):
         super(OutConv, self).__init__()
-        self.conv = DeepwiseSeparableConv(in_ch, out_ch, dropout_rate)
-
-    def forward(self, x):
-        return self.conv(x)
-
-class CBNDLayer(nn.Module):
-    """卷积 -> BatchNorm -> ReLU -> Dropout"""
-
-    def __init__(self, in_ch, out_ch, dropout_rate):
-        super(CBNDLayer, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
-            nn.BatchNorm2d(out_ch),
-            nn.ReLU(inplace=True),
-            # nn.Dropout2d(p=dropout_rate, inplace=False),
-        )
+        if depthwise_separable:
+            self.conv = DepthwiseSeparableConv(in_ch, out_ch, dropout_rate)
+        else:
+            self.conv = nn.Conv2d(in_ch, out_ch, kernel_size=1)
 
     def forward(self, x):
         return self.conv(x)

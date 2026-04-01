@@ -8,7 +8,7 @@ from typing import Optional
 import gc
 
 default_train_config = [
-    {'lr': 0.1, 'momentum': 0.85, 'epochs': 10},
+    {'lr': 0.1, 'momentum': 0.85, 'epochs': 5},
     # {'lr': 0.01, 'momentum': 0.9, 'epochs': 60},
 
     {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
