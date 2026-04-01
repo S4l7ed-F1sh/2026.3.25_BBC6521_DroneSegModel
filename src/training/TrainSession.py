@@ -7,15 +7,20 @@ from src.training.TrainPhase import train_phase
 from typing import Optional
 import gc
 
+# default_train_config = [
+#     {'lr': 0.1, 'momentum': 0.85, 'epochs': 5},
+#
+#     {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
+#     {'lr': 0.005, 'momentum': 0.9, 'epochs': 80},
+#
+#     {'lr': 0.001, 'momentum': 0.9, 'epochs': 80},
+#     {'lr': 0.0005, 'momentum': 0.95, 'epochs': 80},
+# ]
 default_train_config = [
     {'lr': 0.1, 'momentum': 0.85, 'epochs': 5},
-    # {'lr': 0.01, 'momentum': 0.9, 'epochs': 60},
-
     {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
-    {'lr': 0.005, 'momentum': 0.9, 'epochs': 80},
-
-    {'lr': 0.001, 'momentum': 0.9, 'epochs': 80},
-    {'lr': 0.0005, 'momentum': 0.95, 'epochs': 80},
+    {'lr': 0.001, 'momentum': 0.9, 'epochs': 40},
+    {'lr': 0.0005, 'momentum': 0.95, 'epochs': 40},
 ]
 
 # 使用 交叉熵损失函数 和 SGD 优化器 进行训练
