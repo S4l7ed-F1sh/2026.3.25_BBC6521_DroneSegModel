@@ -87,19 +87,10 @@ def train_epoch(
         with torch.no_grad():
 
             feat_images, labels, images = next(iter(dataloader))
-            feat_images, labels, images = feat_images.to(device), labels.to(device), images.to(device)
-
-            if label_transform:
-                labels = label_transform(labels)
+            feat_images = feat_images.to(device)
 
             outputs = model(feat_images)
-
             output_labels = torch.argmax(outputs, dim=1).detach().cpu()
-            if len(labels.shape) == 4:
-                if labels.shape[1] == 1:
-                    labels = labels.squeeze(1)  # 从 (B, 1, H, W) 转换为 (B, H, W)
-                else:
-                    labels = torch.argmax(labels, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
 
             logger.save_sample_image(
                 output_labels,

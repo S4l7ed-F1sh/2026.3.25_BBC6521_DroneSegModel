@@ -62,7 +62,7 @@ def train_session(
             sample_period=min(50, config['epochs'] // 2),  # 每个阶段至少保存 2 次样本
             device=device,
             logging_info={
-                'phase': phase_idx,
+                'phase': phase_idx + 1,
             },
             criterion=criterion,
             optimizer=optimizer,
