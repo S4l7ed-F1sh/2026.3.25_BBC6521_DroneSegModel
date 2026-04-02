@@ -5,6 +5,7 @@ from PIL import Image
 from src.dataset.FeatureExtraction import extract_features
 from torchvision import transforms
 from src.dataset.DataReinforcement import data_augmentation
+import torch
 
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
 print(f"当前脚本路径: {current_file_dir}")
@@ -58,29 +59,39 @@ class MyDataset(Dataset):
             return len(self.files) * 4  # 强制扩充数据集大小为原来的4倍，以增加训练样本数量
 
     def __getitem__(self, idx):
-        idx %= len(self.files)  # 确保索引在有效范围内，适用于数据增强后的索引扩展
+        idx %= len(self.files)
 
         image_path = os.path.join(self.image_dir, self.files[idx])
         label_path = os.path.join(self.label_dir, self.files[idx])
 
         image = Image.open(image_path).convert('RGB')
-
         label = Image.open(label_path)
-        if label.mode != 'P':
-            print(f"警告：标签图像 {self.files[idx]} 的模式不是 'P'，请检查标签图像是否正确。")
+
+        # 确保标签是 'P' 模式或 'L' 模式
+        if label.mode != 'P' and label.mode != 'L':
             label = label.convert('P')
 
-        img = np.array(image)
-        lbl = np.array(label, dtype=np.int64)
+        # 数据增强 (注意：如果你的 transform 包含 ToTensor，这里会出问题)
+        # 假设 data_augmentation 是基于 numpy 的 (如 albumentations 或自定义 numpy 操作)
+        img_np, lbl_np = data_augmentation(np.array(image), np.array(label))
 
-        img, lbl = data_augmentation(img, lbl)
+        # --- 修改部分开始 ---
 
-        ext_feature = extract_features(img)
-        # print("提取的特征维度: ", ext_feature.shape)
-
+        # 1. 处理图像：使用 transform (包含 ToTensor 和 Normalize)
         if self.transform:
-            img = self.transform(img)
-            lbl = self.transform(lbl).squeeze(0)  # 去掉单通道维度，保持与原始标签图像一致的维度
+            img = self.transform(img_np)  # 此时 img 是 [0,1] 或归一化后的 float
+        else:
+            img = torch.from_numpy(img_np).permute(2, 0, 1).float()
+
+        # 2. 处理标签：手动转换，绝对不要除以 255
+        # 将 numpy 数组转为 torch tensor
+        lbl = torch.from_numpy(lbl_np)
+        # 确保类型是 Long，因为交叉熵损失函数需要 Long 类型
+        lbl = lbl.long()
+
+        # --- 修改部分结束 ---
+
+        ext_feature = extract_features(img_np)  # 注意：这里传 numpy 还是 tensor 取决于你的 extract_features 实现
 
         return ext_feature, lbl, img
 
