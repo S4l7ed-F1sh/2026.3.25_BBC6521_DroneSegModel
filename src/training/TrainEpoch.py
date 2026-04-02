@@ -89,6 +89,9 @@ def train_epoch(
             feat_images, labels, images = next(iter(dataloader))
             feat_images = feat_images.to(device)
 
+            if label_transform is not None:
+                labels = label_transform(labels)
+
             outputs = model(feat_images)
             output_labels = torch.argmax(outputs, dim=1).detach().cpu()
 
