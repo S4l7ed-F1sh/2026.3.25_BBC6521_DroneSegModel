@@ -19,7 +19,8 @@ import gc
 default_train_config = [
     {'lr': 0.1, 'momentum': 0.85, 'epochs': 5},
     {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
-    {'lr': 0.001, 'momentum': 0.9, 'epochs': 40},
+    {'lr': 0.001, 'momentum': 0.9, 'epochs': 60},
+    {'lr': 0.0005, 'momentum': 0.95, 'epochs': 60},
     {'lr': 0.0005, 'momentum': 0.95, 'epochs': 40},
 ]
 
