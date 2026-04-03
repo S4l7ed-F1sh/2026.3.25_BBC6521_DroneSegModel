@@ -1,11 +1,15 @@
+import os.path
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from jupyter_server.transutils import base_dir
 from torch.utils.data import DataLoader
 from src.logging.Logger import Logger
 from src.training.TrainPhase import train_phase
 from typing import Optional
 import gc
+import sys
 
 # default_train_config = [
 #     {'lr': 0.1, 'momentum': 0.85, 'epochs': 5},
@@ -34,7 +38,7 @@ def train_session(
         train_config: list[dict] = None,
         output_frequency: int = 20,
         label_transform: Optional[callable(torch.Tensor)] = None,
-        start_epoch: int = 0,
+        start_phase: int = 0,
 ):
     if train_config is None:
         train_config = default_train_config
@@ -49,9 +53,23 @@ def train_session(
         n_classes=2,
     )
 
+    if start_phase > 0:
+        phase_name = f"Phase {start_phase}"
+        base_dir = os.path.join(logger.base_dir, phase_name, 'archive', f"{phase_name}_model.pth")
+
+        # 从 base_dir / phase_name / archive / {phase_name}_model.pth 加载模型参数
+        if os.path.exists(base_dir):
+            print(f"Loading model parameters from {base_dir} for Phase {start_phase}...")
+            model.load_state_dict(torch.load(base_dir, map_location=device))
+            print(f"Model parameters loaded successfully for Phase {start_phase}.")
+        else:
+            print(f"No saved model found at {base_dir} for Phase {start_phase}. Starting from scratch.")
+        sys.stdout.flush()
+
+
     for phase_idx, (config) in enumerate(train_config):
 
-        if phase_idx < start_epoch:
+        if phase_idx < start_phase:
             print(f"Phase {phase_idx} Starting | lr: {config['lr']}, momentum: {config['momentum']}, epoch number: {config['epochs']}")
             logger.start_new_phase(
                 f"Phase No.{phase_idx + 1}",
