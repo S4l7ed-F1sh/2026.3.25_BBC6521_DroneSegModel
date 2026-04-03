@@ -75,8 +75,8 @@ def train_phase(
             labels = label_transform(labels)
 
         outputs = model(feat_images)
-
         output_labels = torch.argmax(outputs, dim=1).detach().cpu()
+
         if len(labels.shape) == 4:
             if (labels.shape[1] == 1):
                 labels = labels.squeeze(1)  # 从 (B, 1, H, W) 转换为 (B, H, W)

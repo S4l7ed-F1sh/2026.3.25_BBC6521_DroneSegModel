@@ -2,8 +2,10 @@ import os
 import csv
 import sys
 
-from PIL import Image
+import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from src.logging.TimeTransform import parse_time_string
 from PIL import Image
 
 # PhaseLogger 用于记录阶段的日志信息，在构造后将会传入一个阶段名称和 Logger 的基础目录路径，
@@ -28,7 +30,7 @@ class PhaseLogger:
         output_frequency (int): 控制台输出的频率，默认为10。
     """
 
-    def __init__(self, phase_name, base_dir, log_format, color_list, output_frequency=10):
+    def __init__(self, phase_name, base_dir, log_format, color_list, output_frequency=10, load_from_csv=False):
         """
         初始化 PhaseLogger。
 
@@ -50,9 +52,33 @@ class PhaseLogger:
         self.saving_log = []
         self._log_file_path = os.path.join(self.base_dir, "saving_log.txt")
         # 清空或创建新的日志文件
-        open(self._log_file_path, 'w').close()
+        if not load_from_csv:
+            open(self._log_file_path, 'w').close()
 
         self.color_list = color_list  # 存储颜色映射字典，供后续使用
+
+        if load_from_csv:
+            self._load_logs_from_csv()
+
+    def _load_logs_from_csv(self):
+        # 从 os.path.join(self.base_dir, "saving_log.csv") 读取日志数据，并填充 self.saving_log 列表
+        # 这个函数用于在训练中断的时候重新加载之前的日志数据，确保日志记录的连续性和完整性。
+        # 因为输入的是已经训练完成的路径，所以不需要输出任何东西，只需要正确加载日志数据即可。
+
+        csv_path = os.path.join(self.base_dir, "saving_log.csv")
+
+        # 使用converters参数来处理时间列
+        df = pd.read_csv(
+            csv_path,
+            converters={
+                'elapsed_time': parse_time_string,
+                'time': parse_time_string
+            }
+        )
+
+        # 将DataFrame转换为字典列表，符合日志格式
+        # 假设日志格式(self.log_format)定义了应包含的键
+        self.saving_log = df[self.log_format].to_dict('records')
 
     def format_log_value(self, key, value):
         """

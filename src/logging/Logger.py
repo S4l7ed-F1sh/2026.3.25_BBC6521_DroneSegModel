@@ -105,7 +105,7 @@ class Logger:
         # 打印提示，确认使用了哪种色板
         print(f"颜色图例已保存至: {save_path} (使用色板: gist_ncar)")
 
-    def start_new_phase(self, phase_name):
+    def start_new_phase(self, phase_name, load_from_csv=False):
         """
         开始一个新的训练阶段。
 
@@ -118,11 +118,25 @@ class Logger:
                 f"Please call 'end_current_phase' before starting a new one."
             )
 
-        new_logger = PhaseLogger(phase_name, self.base_dir, self.log_format, self.color_list, self.output_frequency)
-        self.phase_loggers.append(new_logger)
-        self.current_phase_logger = new_logger
-        print(f"Started new logging phase: '{phase_name}'")
-        sys.stdout.flush()  # 确保日志立即输出到控制台
+        if load_from_csv:
+            new_logger = PhaseLogger(
+                phase_name,
+                self.base_dir,
+                self.log_format,
+                self.color_list,
+                self.output_frequency,
+                load_from_csv=True
+            )
+            self.phase_loggers.append(new_logger)
+
+            print(f"Loaded existing logging phase from CSV: '{phase_name}' with {len(new_logger.get_saving_log())} log entries.")
+            sys.stdout.flush()  # 确保日志立即输出到控制台
+        else:
+            new_logger = PhaseLogger(phase_name, self.base_dir, self.log_format, self.color_list, self.output_frequency)
+            self.phase_loggers.append(new_logger)
+            self.current_phase_logger = new_logger
+            print(f"Started new logging phase: '{phase_name}'")
+            sys.stdout.flush()  # 确保日志立即输出到控制台
 
     def end_current_phase(self, model_to_save=None):
         """

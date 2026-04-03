@@ -1,5 +1,28 @@
 import math
+import pandas as pd
+import re
 
+# 定义解析时间字符串的函数
+def parse_time_string(time_str):
+    """解析形如 '7 min, 28.46 s' 或 '28.46 s' 或 '2 h, 7 min, 28.46 s' 的时间字符串，返回总秒数"""
+    if pd.isna(time_str) or time_str is None:
+        return 0.0
+
+    # 移除引号（如果存在）
+    time_str = str(time_str).strip('"\'')
+
+    # 使用正则表达式解析小时、分钟和秒
+    hours_match = re.search(r'(\d+)\s*h', time_str)
+    minutes_match = re.search(r'(\d+)\s*min', time_str)
+    seconds_match = re.search(r'([\d.]+)\s*s', time_str)
+
+    hours = float(hours_match.group(1)) if hours_match else 0
+    minutes = float(minutes_match.group(1)) if minutes_match else 0
+    seconds = float(seconds_match.group(1)) if seconds_match else 0
+
+    # 返回总秒数
+    total_seconds = hours * 3600 + minutes * 60 + seconds
+    return total_seconds
 
 def format_duration(seconds):
     """

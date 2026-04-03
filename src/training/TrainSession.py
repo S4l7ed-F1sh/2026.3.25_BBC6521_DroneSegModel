@@ -21,7 +21,7 @@ default_train_config = [
     {'lr': 0.01, 'momentum': 0.9, 'epochs': 40},
     {'lr': 0.001, 'momentum': 0.9, 'epochs': 60},
     {'lr': 0.0005, 'momentum': 0.95, 'epochs': 60},
-    {'lr': 0.0005, 'momentum': 0.95, 'epochs': 40},
+    {'lr': 0.0001, 'momentum': 0.95, 'epochs': 40},
 ]
 
 # 使用 交叉熵损失函数 和 SGD 优化器 进行训练
@@ -34,6 +34,7 @@ def train_session(
         train_config: list[dict] = None,
         output_frequency: int = 20,
         label_transform: Optional[callable(torch.Tensor)] = None,
+        start_epoch: int = 0,
 ):
     if train_config is None:
         train_config = default_train_config
@@ -49,6 +50,14 @@ def train_session(
     )
 
     for phase_idx, (config) in enumerate(train_config):
+
+        if phase_idx < start_epoch:
+            print(f"Phase {phase_idx} Starting | lr: {config['lr']}, momentum: {config['momentum']}, epoch number: {config['epochs']}")
+            logger.start_new_phase(
+                f"Phase No.{phase_idx + 1}",
+                load_from_csv=True,
+            )
+            continue  # 跳过已经完成的阶段
 
         optimizer = optim.SGD(
             model.parameters(),
