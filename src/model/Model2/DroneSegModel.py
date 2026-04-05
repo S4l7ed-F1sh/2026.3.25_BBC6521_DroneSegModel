@@ -64,12 +64,12 @@ class DroneSegModel(torch.nn.Module):
 
         to_combine = combined_outputs[-1]
         for i in range(self.layers-1):
-            print(f"Combining layer {self.layers-1-i} with layer {self.layers-2-i}")
-            print(f"to_combine shape: {to_combine.shape}, combined_outputs[{self.layers-2-i}] shape: {combined_outputs[self.layers-2-i].shape}")
+            # print(f"Combining layer {self.layers-1-i} with layer {self.layers-2-i}")
+            # print(f"to_combine shape: {to_combine.shape}, combined_outputs[{self.layers-2-i}] shape: {combined_outputs[self.layers-2-i].shape}")
 
             upsampled = nn.functional.interpolate(to_combine, scale_factor=2, mode='bilinear', align_corners=False)
 
-            print(f"Upsampled shape: {upsampled.shape}")
+            # print(f"Upsampled shape: {upsampled.shape}")
 
             to_combine = self.upsampler[i](
                 torch.cat([upsampled, combined_outputs[self.layers - i - 2]], dim=1)

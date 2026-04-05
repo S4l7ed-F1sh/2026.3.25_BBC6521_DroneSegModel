@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 from src.model.Model2.AtrousResidualBlock import AtrousResidualBlock
-from ConvLayers import CRLayer, CBNRLayer, CBNDLayer
+from src.model.Model2.ConvLayers import CRLayer, CBNRLayer, CBNDLayer
 import math
 
 class MultiResolutionLevel(nn.Module):
