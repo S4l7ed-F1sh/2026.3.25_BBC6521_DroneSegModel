@@ -39,6 +39,7 @@ def train_session(
         output_frequency: int = 20,
         label_transform: Optional[callable(torch.Tensor)] = None,
         start_phase: int = 0,
+        n_classes=2,
 ):
     if train_config is None:
         train_config = default_train_config
@@ -50,7 +51,7 @@ def train_session(
             'phase', 'epoch', 'elapsed_time', 'loss', 'miou', 'accuracy', 'time'
         ],
         output_frequency=output_frequency,
-        n_classes=2,
+        n_classes=n_classes,
     )
 
     if start_phase > 0:

@@ -6,7 +6,16 @@ import torch.nn as nn
 # 输入的参数是模型的输出和标签，模型的输出是一个 B*C*H*W 的张量，标签是一个 B*C*H*W 的 one-hot 编码的张量。
 def criterion(output: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
     # 计算二元交叉熵损失
-    bce_loss = nn.BCEWithLogitsLoss()(output, label)
+    # 如果通道数为 2：使用二元交叉熵
+    # 如果通道数大于 2：使用多分类交叉熵
+    if output.shape[1] == 2:
+        # 对于二分类任务，使用 BCEWithLogitsLoss
+        bce_loss = nn.BCEWithLogitsLoss()(output, label)
+    else:
+        # 对于多分类任务，使用 CrossEntropyLoss
+        # 需要将标签从 one-hot 编码转换为类别索引
+        label_indices = torch.argmax(label, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
+        bce_loss = nn.CrossEntropyLoss()(output, label_indices)
 
     # 计算 Dice Loss
     smooth = 1e-6  # 防止除零错误
