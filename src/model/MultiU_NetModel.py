@@ -6,7 +6,7 @@ import torch.nn as nn
 from src.model.U_NetModel import U_Net
 from src.model.ConvLayers import CBNDLayer
 
-from src.training.out_conv_training.sorting_method import BEST_PERM, get_mask_from_permutation
+from src.training.out_conv_training.SortingMethod import BEST_PERM, get_mask_from_permutation
 
 class MultiU_Net(nn.Module):
     """多分支 U-Net 模型，将 n 分类任务分割为 n 个二分类任务，每个分支都有一个 U-Net 模型，输出 1 通道信息，"""

@@ -25,6 +25,7 @@ def benchmark(
     dataloader: torch.utils.data.DataLoader,
     need_argmax: bool,
     device: torch.device,
+    need_featured_input: bool,
     n_classes: int = 5,
 ):
     """
@@ -61,8 +62,11 @@ def benchmark(
 
     # --- Run inference over entire dataset ---
     with torch.no_grad():
-        for batch_idx, (feature_input, label, _) in enumerate(dataloader):
-            feature_input = feature_input.to(device)
+        for batch_idx, (feature_input, label, image) in enumerate(dataloader):
+            if need_featured_input:
+                feature_input = feature_input.to(device)
+            else:
+                feature_input = image.to(device)
             label = label.to(device)  # [B, 1, H, W]
 
             # Time each batch
@@ -231,6 +235,7 @@ def evaluate_model_on_dataset(
     n_classes: int = 5,
     num_workers: int = 0,
     pin_memory: bool = False,
+    need_featured_input: bool = True,
 ):
     """
     Evaluate a segmentation model on a given dataset using the benchmark function.
@@ -268,5 +273,6 @@ def evaluate_model_on_dataset(
         dataloader=dataloader,
         need_argmax=need_argmax,
         device=device,
-        n_classes=n_classes
+        n_classes=n_classes,
+        need_featured_input=need_featured_input,
     )
