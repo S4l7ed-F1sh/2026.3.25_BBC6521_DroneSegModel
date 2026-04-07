@@ -15,6 +15,7 @@ class MultiU_Net(nn.Module):
             self,
             in_channel,
             depth:list,
+            combine_method: str,  # 'permutation' 使用排列组合方法，'out_layer' 使用输出层方法
             dropout_rate=0.1,
             bilinear=True,
             n_classes=5,
@@ -31,16 +32,27 @@ class MultiU_Net(nn.Module):
             depthwise_separable=depthwise_separable,
         )
 
+        self.out_layer = None
+        self.combine_method = combine_method
+
+        if combine_method == 'out_layer':
+            self.out_layer = OutLayer(n_classes=n_classes, dropout_rate=dropout_rate)
+
     def forward(self, x):
         multi_branch_output = self.multi_branch(x)  # [B, n_classes * 2, H, W]
 
-        out = get_mask_from_permutation(multi_branch_output, BEST_PERM)  # [B, 1, H, W]
+        if self.combine_method == 'out_layer':
+            out = self.out_layer(multi_branch_output)  # [B, n_classes, H, W]
+        elif self.combine_method == 'permutation':
+            out = get_mask_from_permutation(multi_branch_output, BEST_PERM)  # [B, 1, H, W]
 
         return out  # [B, 1, H, W]
 
-    def read_param(self, branchs: list):
+    def read_param(self, branchs: list, out_layer: str = None):
         """读取模型参数，branchs 是一个包含 n_classes 个文件路径的列表，每个文件路径对应一个分支 U-Net 模型的参数文件，out_layer 是输出层参数文件的路径"""
         self.multi_branch.read_param(branchs)
+        if self.combine_method == 'out_layer' and out_layer is not None:
+            self.out_layer.read_param(out_layer)
 
 class MultiBranchU_Net(nn.Module):
     """多分支 U-Net 模型，每个分支都有一个 U-Net 模型，输出 n_classes 通道信息，进行 n 分类任务"""
@@ -106,7 +118,7 @@ class OutLayer(nn.Module):
         )
 
     def forward(self, x):
-        return self.conv2(self.conv1(x))
+        return self.conv(x)
 
     def read_param(self, file_path: str):
         """读取输出层的参数，file_path 是输出层参数文件的路径"""

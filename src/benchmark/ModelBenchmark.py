@@ -7,6 +7,15 @@ import numpy as np
 from pathlib import Path
 from sklearn.metrics import confusion_matrix, classification_report
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, Dataset
+
+# 导入tqdm用于显示进度条
+try:
+    from tqdm import tqdm
+except ImportError:
+    print("Warning: tqdm not found. Please install it with 'pip install tqdm' for better progress visualization.")
+    tqdm = None
+
 
 # 本文件定义了一个函数用于模型性能评估。
 # dataloader 为数据加载器，batch_size 为 1
@@ -20,13 +29,13 @@ import torch.nn.functional as F
 # 首先，函数需要打开 resources/benchmark/{title}/ 目录，然后创建一个 csv 文件用于记录该模型的指标，不用记录每个 batch 的指标，只记录每个 epoch 的平均指标。
 # 同时，需要将这些信息输出至控制台，以及写入同目录下新建的 log.txt 文件中。
 def benchmark(
-    title: str,
-    model: torch.nn.Module,
-    dataloader: torch.utils.data.DataLoader,
-    need_argmax: bool,
-    device: torch.device,
-    need_featured_input: bool,
-    n_classes: int = 5,
+        title: str,
+        model: torch.nn.Module,
+        dataloader: torch.utils.data.DataLoader,
+        need_argmax: bool,
+        device: torch.device,
+        need_featured_input: bool,
+        n_classes: int = 5,
 ):
     """
     Benchmark a semantic segmentation model on a given dataloader.
@@ -40,13 +49,22 @@ def benchmark(
         device (torch.device): Device to run inference on.
         n_classes (int): Number of semantic classes.
     """
+    print(f"Starting benchmark for: {title}")
+    print(f"Number of classes: {n_classes}")
+    print(f"Device: {device}")
+    print(f"Need argmax: {need_argmax}")
+    print(f"Using featured input: {need_featured_input}")
+
     # --- Setup directories and files ---
     base_dir = Path("resources") / "benchmark" / title
     base_dir.mkdir(parents=True, exist_ok=True)
     csv_path = base_dir / "metrics.csv"
     log_path = base_dir / "log.txt"
 
+    print(f"Results will be saved to: {base_dir}")
+
     # --- Move model to device and set to eval mode ---
+    print("Moving model to device and setting to eval mode...")
     model.to(device)
     model.eval()
 
@@ -59,10 +77,38 @@ def benchmark(
     if device.type == 'cuda':
         torch.cuda.reset_peak_memory_stats()
         torch.cuda.synchronize()
+        print(f"CUDA memory stats reset. Using GPU: {torch.cuda.get_device_name(0)}")
+
+    # 获取数据集大小用于进度显示
+    try:
+        dataset_size = len(dataloader.dataset)
+        print(f"Dataset size: {dataset_size}")
+    except:
+        dataset_size = len(dataloader)  # 如果无法获取实际数据集大小，使用dataloader长度
+        print(f"Dataset size: ~{dataset_size} (estimated)")
 
     # --- Run inference over entire dataset ---
+    print("Starting inference...")
+
+    # 使用tqdm显示进度
+    if tqdm is not None:
+        progress_bar = tqdm(enumerate(dataloader),
+                            total=len(dataloader),
+                            desc="Inference Progress",
+                            unit="batch")
+    else:
+        progress_bar = enumerate(dataloader)
+        print("Processing batches...")
+
     with torch.no_grad():
-        for batch_idx, (feature_input, label, image) in enumerate(dataloader):
+        for batch_idx, (feature_input, label, image) in progress_bar:
+            # 更新进度条描述
+            if tqdm is not None and batch_idx % 10 == 0:  # 每10个批次更新一次描述
+                progress_bar.set_postfix({
+                    'Batch': f'{batch_idx}',
+                    'Time': f'{total_time:.2f}s'
+                })
+
             if need_featured_input:
                 feature_input = feature_input.to(device)
             else:
@@ -79,7 +125,8 @@ def benchmark(
             if device.type == 'cuda':
                 torch.cuda.synchronize()
             end_time = time.time()
-            total_time += (end_time - start_time)
+            batch_time = (end_time - start_time)
+            total_time += batch_time
 
             # Post-process output to get predicted class indices [B, H, W]
             if need_argmax:
@@ -101,15 +148,26 @@ def benchmark(
             all_preds.append(pred_np)
             all_labels.append(label_np)
 
+            # 每100个批次打印一次状态
+            if batch_idx % 100 == 0:
+                print(f"Processed batch {batch_idx}, current total time: {total_time:.2f}s, "
+                      f"time per batch: {batch_time:.4f}s")
+
+    print(f"Inference completed! Total time: {total_time:.2f}s")
+
     # --- Concatenate all predictions and labels ---
+    print("Concatenating predictions and labels...")
     all_preds = np.concatenate(all_preds)
     all_labels = np.concatenate(all_labels)
+    print(f"Final arrays shape - Predictions: {all_preds.shape}, Labels: {all_labels.shape}")
 
     # --- Compute metrics ---
     # Ignore invalid labels (e.g., if label has values >= n_classes or < 0)
+    print("Computing metrics...")
     valid_mask = (all_labels >= 0) & (all_labels < n_classes)
     all_preds = all_preds[valid_mask]
     all_labels = all_labels[valid_mask]
+    print(f"Valid pixels after filtering: {len(all_labels)}")
 
     # Pixel Accuracy
     pixel_acc = np.mean(all_preds == all_labels)
@@ -187,6 +245,7 @@ def benchmark(
         result[f"class_{i}_f1"] = report_dict.get(str(i), {}).get('f1-score', 0.0)
 
     # --- Write to CSV ---
+    print("Writing results to CSV...")
     file_exists = csv_path.exists()
     with open(csv_path, mode='a', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=result.keys())
@@ -218,24 +277,24 @@ def benchmark(
     print(log_message)
 
     # --- Write to log.txt ---
+    print("Writing results to log file...")
     with open(log_path, 'a', encoding='utf-8') as f:
         f.write(log_message + "\n")
 
     print(f"\n✅ Results saved to:\n   CSV: {csv_path}\n   LOG: {log_path}")
+    print(f"✅ Benchmark completed successfully!")
 
-import torch
-from torch.utils.data import DataLoader
 
 def evaluate_model_on_dataset(
-    title: str,
-    model: torch.nn.Module,
-    dataset: torch.utils.data.Dataset,
-    need_argmax: bool,
-    device: torch.device,
-    n_classes: int = 5,
-    num_workers: int = 0,
-    pin_memory: bool = False,
-    need_featured_input: bool = True,
+        title: str,
+        model: torch.nn.Module,
+        dataset: torch.utils.data.Dataset,
+        need_argmax: bool,
+        device: torch.device,
+        n_classes: int = 5,
+        num_workers: int = 0,
+        pin_memory: bool = False,
+        need_featured_input: bool = True,
 ):
     """
     Evaluate a segmentation model on a given dataset using the benchmark function.
@@ -256,15 +315,19 @@ def evaluate_model_on_dataset(
     Returns:
         None. Results are saved to disk.
     """
+    print(f"Setting up DataLoader for dataset with {len(dataset)} samples...")
+
     # Create DataLoader with batch_size=1 as required
     dataloader = DataLoader(
         dataset,
         batch_size=1,
-        shuffle=False,          # No need to shuffle during evaluation
+        shuffle=False,  # No need to shuffle during evaluation
         num_workers=num_workers,
         pin_memory=pin_memory,
-        drop_last=False         # Keep all samples
+        drop_last=False  # Keep all samples
     )
+
+    print(f"DataLoader created with {len(dataloader)} batches")
 
     # Call the benchmark function
     benchmark(
