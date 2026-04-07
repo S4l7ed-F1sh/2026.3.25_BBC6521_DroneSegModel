@@ -6,6 +6,8 @@ import torch.nn as nn
 from src.model.U_NetModel import U_Net
 from src.model.ConvLayers import CBNDLayer
 
+from src.training.out_conv_training.sorting_method import BEST_PERM, get_mask_from_permutation
+
 class MultiU_Net(nn.Module):
     """多分支 U-Net 模型，将 n 分类任务分割为 n 个二分类任务，每个分支都有一个 U-Net 模型，输出 1 通道信息，"""
 
@@ -28,17 +30,17 @@ class MultiU_Net(nn.Module):
             n_classes=n_classes,
             depthwise_separable=depthwise_separable,
         )
-        self.out_layer = OutLayer(in_ch=n_classes*2, out_ch=n_classes, dropout_rate=dropout_rate)
 
     def forward(self, x):
         multi_branch_output = self.multi_branch(x)  # [B, n_classes * 2, H, W]
-        out = self.out_layer(multi_branch_output)  # [B, n_classes, H, W]
-        return out  # [B, n_classes, H, W]
 
-    def read_param(self, branchs: list, out_layer: str):
+        out = get_mask_from_permutation(multi_branch_output, BEST_PERM)  # [B, 1, H, W]
+
+        return out  # [B, 1, H, W]
+
+    def read_param(self, branchs: list):
         """读取模型参数，branchs 是一个包含 n_classes 个文件路径的列表，每个文件路径对应一个分支 U-Net 模型的参数文件，out_layer 是输出层参数文件的路径"""
         self.multi_branch.read_param(branchs)
-        self.out_layer.read_param(out_layer)
 
 class MultiBranchU_Net(nn.Module):
     """多分支 U-Net 模型，每个分支都有一个 U-Net 模型，输出 n_classes 通道信息，进行 n 分类任务"""
@@ -93,8 +95,15 @@ class OutLayer(nn.Module):
         in_ch = n_classes * 2
         out_ch = n_classes
 
-        self.conv1 = CBNDLayer(in_ch=in_ch, out_ch=64, dropout_rate=dropout_rate)
-        self.conv2 = CBNDLayer(in_ch=64, out_ch=out_ch, dropout_rate=dropout_rate)
+        self.conv = nn.Sequential(
+            nn.Conv2d(in_channels=in_ch, out_channels=in_ch, kernel_size=1, padding=0),
+            nn.BatchNorm2d(in_ch),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=1, padding=0),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True),
+        )
 
     def forward(self, x):
         return self.conv2(self.conv1(x))
