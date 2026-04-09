@@ -9,6 +9,7 @@ import numpy as np
 import json
 from src.training.out_conv_training.SortingMethod import get_mask_from_permutation
 
+
 def calculate_metrics(pred, target, num_classes=5):
     """
     计算语义分割的各项指标：Accuracy, mIoU, Precision, Recall, F1-score。
@@ -81,7 +82,7 @@ def test():
         os.path.join(para_dir, 'unet_branch1.pth'),
         os.path.join(para_dir, 'unet_branch2.pth'),
         os.path.join(para_dir, 'unet_branch3.pth'),
-        os.path.join(para_dir, 'unet_branch3.pth'),  # 注意：这里似乎重复了 branch3
+        os.path.join(para_dir, 'unet_branch4.pth'),
     ]
 
     ds_path = check_dataset()
@@ -110,102 +111,157 @@ def test():
         os.remove(json_path)
         print(f"已清理旧文件: {json_path}")
 
-    # 打开文件用于流式写入
+    all_results = []  # 存储所有结果以便后续分析
+
+    # --- 外层循环 ---
+    for i, perm in enumerate(tqdm(class_permutations, desc="Testing Permutations")):
+        total_acc = 0.0
+        total_miou = 0.0
+        total_precision = 0.0
+        total_recall = 0.0
+        total_f1 = 0.0
+        count = 0
+
+        # --- 内层循环 ---
+        for feature_map, label, raw_image in dataloader:
+            feature_map = feature_map.to(device)
+            target = label.squeeze(0).squeeze(0).long().to(device)
+
+            # 调用重构的函数生成掩膜
+            final_pred = get_mask_from_permutation(feature_map, perm)
+
+            metrics = calculate_metrics(final_pred, target, num_classes=5)
+            total_acc += metrics['acc']
+            total_miou += metrics['miou']
+            total_precision += metrics['precision']
+            total_recall += metrics['recall']
+            total_f1 += metrics['f1']
+            count += 1
+
+        # --- 计算当前排列的平均指标 ---
+        avg_metrics = {
+            'perm': perm,
+            'acc': total_acc / count,
+            'miou': total_miou / count,
+            'precision': total_precision / count,
+            'recall': total_recall / count,
+            'f1': total_f1 / count,
+            'sum_three': (total_miou / count) + (total_f1 / count) + (total_acc / count)  # 三者之和
+        }
+
+        all_results.append(avg_metrics)
+
+        # 实时打印当前最佳（可选，这里简单打印一下 mIoU）
+        tqdm.write(f"完成排列 {perm} -> mIoU: {avg_metrics['miou']:.4f}")
+
+    # 保存所有结果到JSON文件
     with open(json_path, 'w', encoding='utf-8') as f:
-        f.write("[\n")  # 开始 JSON 数组
-        first_item = True
+        json.dump(all_results, f, indent=4, ensure_ascii=False)
 
-        # --- 外层循环 ---
-        for i, perm in enumerate(tqdm(class_permutations, desc="Testing Permutations")):
-            total_acc = 0.0
-            total_miou = 0.0
-            total_precision = 0.0
-            total_recall = 0.0
-            total_f1 = 0.0
-            count = 0
+    print(f"\n✅ 所有计算完成，详细结果已保存至: {json_path}")
 
-            # --- 内层循环 ---
-            for feature_map, label, raw_image in dataloader:
-                feature_map = feature_map.to(device)
-                target = label.squeeze(0).squeeze(0).long().to(device)
+    # --- 分别按不同指标排序并找出最佳排列 ---
 
-                # 调用重构的函数生成掩膜
-                final_pred = get_mask_from_permutation(feature_map.squeeze(0), perm)
+    # 1. 按mIoU排序（最高在前）
+    results_by_miou = sorted(all_results, key=lambda x: x['miou'], reverse=True)
+    best_miou_result = results_by_miou[0]
 
-                metrics = calculate_metrics(final_pred, target, num_classes=5)
-                total_acc += metrics['acc']
-                total_miou += metrics['miou']
-                total_precision += metrics['precision']
-                total_recall += metrics['recall']
-                total_f1 += metrics['f1']
-                count += 1
+    # 2. 按Pixel Acc排序（最高在前）
+    results_by_acc = sorted(all_results, key=lambda x: x['acc'], reverse=True)
+    best_acc_result = results_by_acc[0]
 
-            # --- 计算当前排列的平均指标 ---
-            avg_metrics = {
-                'perm': perm,
-                'acc': total_acc / count,
-                'miou': total_miou / count,
-                'precision': total_precision / count,
-                'recall': total_recall / count,
-                'f1': total_f1 / count
-            }
+    # 3. 按F1-score排序（最高在前）
+    results_by_f1 = sorted(all_results, key=lambda x: x['f1'], reverse=True)
+    best_f1_result = results_by_f1[0]
 
-            # --- 实时写入文件 ---
-            if not first_item:
-                f.write(",\n")  # 添加逗号分隔符
-            else:
-                first_item = False
+    # 4. 按三者之和排序（最高在前）
+    results_by_sum = sorted(all_results, key=lambda x: x['sum_three'], reverse=True)
+    best_sum_result = results_by_sum[0]
 
-            # 写入当前结果
-            json.dump(avg_metrics, f, indent=4, ensure_ascii=False)
+    # --- 保存各种最佳结果 ---
+    # 创建汇总结果字典
+    summary_results = {
+        'best_miou': {
+            'perm': best_miou_result['perm'],
+            'miou': best_miou_result['miou'],
+            'acc': best_miou_result['acc'],
+            'f1': best_miou_result['f1'],
+            'sum_three': best_miou_result['sum_three']
+        },
+        'best_acc': {
+            'perm': best_acc_result['perm'],
+            'miou': best_acc_result['miou'],
+            'acc': best_acc_result['acc'],
+            'f1': best_acc_result['f1'],
+            'sum_three': best_acc_result['sum_three']
+        },
+        'best_f1': {
+            'perm': best_f1_result['perm'],
+            'miou': best_f1_result['miou'],
+            'acc': best_f1_result['acc'],
+            'f1': best_f1_result['f1'],
+            'sum_three': best_f1_result['sum_three']
+        },
+        'best_sum': {
+            'perm': best_sum_result['perm'],
+            'miou': best_sum_result['miou'],
+            'acc': best_sum_result['acc'],
+            'f1': best_sum_result['f1'],
+            'sum_three': best_sum_result['sum_three']
+        }
+    }
 
-            # 强制刷新缓冲区，确保数据写入硬盘
-            f.flush()
-            os.fsync(f.fileno())
+    # 保存汇总结果
+    summary_json_path = os.path.join(output_dir, 'best_results_summary.json')
+    with open(summary_json_path, 'w', encoding='utf-8') as f:
+        json.dump(summary_results, f, indent=4, ensure_ascii=False)
 
-            # 实时打印当前最佳（可选，这里简单打印一下 mIoU）
-            tqdm.write(f"完成排列 {perm} -> mIoU: {avg_metrics['miou']:.4f}")
-
-        f.write("\n]")  # 结束 JSON 数组
-        f.flush()
-        os.fsync(f.fileno())
-
-    print(f"\n✅ 所有计算完成，详细结果已实时保存至: {json_path}")
-
-    # --- 最后读取文件生成排行榜 ---
-    # 因为我们是流式写入的，最后需要重新读取来排序
-    with open(json_path, 'r', encoding='utf-8') as f:
-        results = json.load(f)
-
-    results.sort(key=lambda x: x['miou'], reverse=True)
-    best_res = results[0]
-
-    # 保存最佳结果
-    txt_path = os.path.join(output_dir, 'best_permutation.txt')
-    with open(txt_path, 'w', encoding='utf-8') as f:
-        f.write(f"最佳排列: {best_res['perm']}\n")
-        f.write(f"mIoU: {best_res['miou']:.4f}\n")
-
-    print("\n" + "=" * 80)
-    print(f"{'优先级排列':<20} | {'mIoU':<10} | {'Acc':<10}")
-    print("-" * 80)
-    for res in results[:5]:  # 只显示前5个
-        print(f"{str(res['perm']):<20} | {res['miou']:.4f}     | {res['acc']:.4f}")
-    print("=" * 80)
-    print(f"🏆 最佳排列: {best_res['perm']}")
+    print("\n" + "=" * 100)
+    print(f"{'排序方式':<12} | {'排列':<20} | {'mIoU':<8} | {'Acc':<8} | {'F1':<8} | {'三者之和':<10}")
+    print("-" * 100)
+    print(
+        f"{'mIoU最优':<12} | {str(best_miou_result['perm']):<20} | {best_miou_result['miou']:<8.4f} | {best_miou_result['acc']:<8.4f} | {best_miou_result['f1']:<8.4f} | {best_miou_result['sum_three']:<10.4f}")
+    print(
+        f"{'Pixel Acc最优':<12} | {str(best_acc_result['perm']):<20} | {best_acc_result['miou']:<8.4f} | {best_acc_result['acc']:<8.4f} | {best_acc_result['f1']:<8.4f} | {best_acc_result['sum_three']:<10.4f}")
+    print(
+        f"{'F1-score最优':<12} | {str(best_f1_result['perm']):<20} | {best_f1_result['miou']:<8.4f} | {best_f1_result['acc']:<8.4f} | {best_f1_result['f1']:<8.4f} | {best_f1_result['sum_three']:<10.4f}")
+    print(
+        f"{'三者之和最优':<12} | {str(best_sum_result['perm']):<20} | {best_sum_result['miou']:<8.4f} | {best_sum_result['acc']:<8.4f} | {best_sum_result['f1']:<8.4f} | {best_sum_result['sum_three']:<10.4f}")
+    print("=" * 100)
 
     # --- 示例：如何在找到最佳排列后使用新函数 ---
-    print("\n--- 示例：使用最佳排列生成单张图片的预测掩膜 ---")
-    # 假设我们想对数据集中的第一张图片应用最佳排列
+    print("\n--- 示例：使用各指标对应的最优排列生成单张图片的预测掩膜 ---")
+    # 假设我们想对数据集中的第一张图片应用各个最优排列
     sample_feature_map, sample_label, _ = next(iter(dataloader))
     sample_feature_map = sample_feature_map.to(device)
 
-    best_perm = tuple(best_res['perm'])  # 确保类型一致
-    predicted_mask = get_mask_from_permutation(sample_feature_map.squeeze(0), best_perm)
-
+    # 使用mIoU最优排列
+    best_miou_perm = tuple(best_miou_result['perm'])
+    predicted_mask_miou = get_mask_from_permutation(sample_feature_map, best_miou_perm)
     print(
-        f"使用最佳排列 {best_perm}，对第一张图片生成的预测掩膜形状: {predicted_mask.shape}, 设备: {predicted_mask.device}")
-    print(f"预测掩膜的唯一值 (类别): {torch.unique(predicted_mask)}")
+        f"使用mIoU最优排列 {best_miou_perm}，对第一张图片生成的预测掩膜形状: {predicted_mask_miou.shape}, 设备: {predicted_mask_miou.device}")
+    print(f"预测掩膜的唯一值 (类别): {torch.unique(predicted_mask_miou)}")
+
+    # 使用Pixel Acc最优排列
+    best_acc_perm = tuple(best_acc_result['perm'])
+    predicted_mask_acc = get_mask_from_permutation(sample_feature_map, best_acc_perm)
+    print(
+        f"使用Pixel Acc最优排列 {best_acc_perm}，对第一张图片生成的预测掩膜形状: {predicted_mask_acc.shape}, 设备: {predicted_mask_acc.device}")
+    print(f"预测掩膜的唯一值 (类别): {torch.unique(predicted_mask_acc)}")
+
+    # 使用F1-score最优排列
+    best_f1_perm = tuple(best_f1_result['perm'])
+    predicted_mask_f1 = get_mask_from_permutation(sample_feature_map, best_f1_perm)
+    print(
+        f"使用F1-score最优排列 {best_f1_perm}，对第一张图片生成的预测掩膜形状: {predicted_mask_f1.shape}, 设备: {predicted_mask_f1.device}")
+    print(f"预测掩膜的唯一值 (类别): {torch.unique(predicted_mask_f1)}")
+
+    # 使用三者之和最优排列
+    best_sum_perm = tuple(best_sum_result['perm'])
+    predicted_mask_sum = get_mask_from_permutation(sample_feature_map, best_sum_perm)
+    print(
+        f"使用三者之和最优排列 {best_sum_perm}，对第一张图片生成的预测掩膜形状: {predicted_mask_sum.shape}, 设备: {predicted_mask_sum.device}")
+    print(f"预测掩膜的唯一值 (类别): {torch.unique(predicted_mask_sum)}")
 
 
 if __name__ == "__main__":

@@ -284,6 +284,13 @@ def benchmark(
     print(f"\n✅ Results saved to:\n   CSV: {csv_path}\n   LOG: {log_path}")
     print(f"✅ Benchmark completed successfully!")
 
+    # --- 清理内存 ---
+    print("Cleaning up memory...")
+    del all_preds, all_labels, pred_np, label_np, output, pred, label, feature_input
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()  # 清空CUDA缓存
+    print("Memory cleanup completed.")
+
 
 def evaluate_model_on_dataset(
         title: str,
@@ -339,3 +346,9 @@ def evaluate_model_on_dataset(
         n_classes=n_classes,
         need_featured_input=need_featured_input,
     )
+
+    # --- 在evaluate_model_on_dataset函数结束后也清理内存 ---
+    print("Cleaning up memory after evaluation...")
+    if device.type == 'cuda':
+        torch.cuda.empty_cache()
+    print("Memory cleanup completed after evaluation.")

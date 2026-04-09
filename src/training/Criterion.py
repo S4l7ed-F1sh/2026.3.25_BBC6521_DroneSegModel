@@ -8,13 +8,15 @@ def criterion(output: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
     # 计算二元交叉熵损失
     # 如果通道数为 2：使用二元交叉熵
     # 如果通道数大于 2：使用多分类交叉熵
+
+    label_indices = torch.argmax(label, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
+
     if output.shape[1] == 2:
         # 对于二分类任务，使用 BCEWithLogitsLoss
         bce_loss = nn.BCEWithLogitsLoss()(output, label)
     else:
         # 对于多分类任务，使用 CrossEntropyLoss
         # 需要将标签从 one-hot 编码转换为类别索引
-        label_indices = torch.argmax(label, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
         bce_loss = nn.CrossEntropyLoss()(output, label_indices)
 
     # 计算 Dice Loss
@@ -26,12 +28,11 @@ def criterion(output: torch.Tensor, label: torch.Tensor) -> torch.Tensor:
 
     # 计算 IoU Loss, 使用提供的 compute_miou 函数计算 IoU，然后转换为 IoU Loss
     output_labels = torch.argmax(output, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
-    label_labels = torch.argmax(label, dim=1)  # 从 (B, C, H, W) 转换为 (B, H, W)
-    iou_loss = 1 - compute_miou(output_labels.cpu(), label_labels.cpu(), num_classes=output.shape[1])  # 计算 IoU Loss
+    iou_loss = 1 - compute_miou(output_labels.cpu(), label_indices.cpu(), num_classes=output.shape[1])  # 计算 IoU Loss
 
     # 总损失是三者的加权和，这里权重都设为1，可以根据需要调整
-    total_loss = bce_loss + dice_loss.mean() + iou_loss.mean()
+    total_loss = bce_loss + dice_loss.mean() + iou_loss
 
-    del output, label, output_sigmoid, intersection, union, output_labels, label_labels  # 释放内存
+    del output, label, output_sigmoid, intersection, union, output_labels  # 释放内存
 
     return total_loss

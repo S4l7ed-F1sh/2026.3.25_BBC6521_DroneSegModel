@@ -123,7 +123,7 @@ def run_validation():
         os.path.join(para_dir, 'unet_branch1.pth'),
         os.path.join(para_dir, 'unet_branch2.pth'),
         os.path.join(para_dir, 'unet_branch3.pth'),
-        os.path.join(para_dir, 'unet_branch3.pth'),
+        os.path.join(para_dir, 'unet_branch4.pth'),
     ]
 
     # --- 加载你的数据集 ---

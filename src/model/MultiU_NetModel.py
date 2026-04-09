@@ -111,10 +111,12 @@ class OutLayer(nn.Module):
             nn.Conv2d(in_channels=in_ch, out_channels=in_ch, kernel_size=1, padding=0),
             nn.BatchNorm2d(in_ch),
             nn.ReLU(inplace=True),
+            nn.Dropout2d(p=dropout_rate, inplace=False),
 
             nn.Conv2d(in_channels=in_ch, out_channels=out_ch, kernel_size=1, padding=0),
             nn.BatchNorm2d(out_ch),
             nn.ReLU(inplace=True),
+            nn.Dropout2d(p=dropout_rate, inplace=False),
         )
 
     def forward(self, x):
