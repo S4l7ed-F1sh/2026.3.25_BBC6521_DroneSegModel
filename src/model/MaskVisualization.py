@@ -122,14 +122,14 @@ def visualize_segmentation_with_edges(image, mask, edge_width=2, n_classes=5):
     return output_img
 
 
-def segmentation_visualizer(image, mask, edge_width=10, n_classes=5):
+def segmentation_visualizer(image, mask, edge_width=5, n_classes=5):
     """
     分割结果可视化主函数
 
     Args:
         image: RGB图像张量，形状为(1, 3, H, W)，值域0-1或0-255
         mask: 分割mask张量，形状为(1, H, W)，值域为类别索引
-        edge_width: 边缘宽度，默认为10
+        edge_width: 边缘宽度，默认为5
         n_classes: 类别数量，默认为5
 
     Returns:
@@ -138,14 +138,14 @@ def segmentation_visualizer(image, mask, edge_width=10, n_classes=5):
     return visualize_segmentation_with_edges(image, mask, edge_width, n_classes)
 
 
-def visualize_with_contours(image, mask, edge_width=10, n_classes=5):
+def visualize_with_contours(image, mask, edge_width=5, n_classes=5):
     """
     使用轮廓检测方法生成可视化图像
 
     Args:
         image: RGB图像张量，形状为(1, 3, H, W)，值域0-1或0-255
         mask: 分割mask张量，形状为(1, H, W)，值域为类别索引
-        edge_width: 边缘宽度，默认为10
+        edge_width: 边缘宽度，默认为5
         n_classes: 类别数量，默认为5
 
     Returns:

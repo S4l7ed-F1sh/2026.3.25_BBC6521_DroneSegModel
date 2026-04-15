@@ -127,6 +127,9 @@ class MyDataset(Dataset):
         # print(f"image 图像中值域: {img_u}")
         print('=' * 70)
 
+    def get_file_name(self, idx):
+        idx %= len(self.files)
+        return self.files[idx]
 
 def convert_to_binary_label(label_tensor, class_idx):
     """
