@@ -73,7 +73,10 @@ class MyDataset(Dataset):
 
         # 数据增强 (注意：如果你的 transform 包含 ToTensor，这里会出问题)
         # 假设 data_augmentation 是基于 numpy 的 (如 albumentations 或自定义 numpy 操作)
-        img_np, lbl_np = data_augmentation(np.array(image), np.array(label))
+        if self.data_enforcement:
+            img_np, lbl_np = data_augmentation(np.array(image), np.array(label))
+        else:
+            img_np, lbl_np = np.array(image), np.array(label)
 
         # --- 修改部分开始 ---
 
