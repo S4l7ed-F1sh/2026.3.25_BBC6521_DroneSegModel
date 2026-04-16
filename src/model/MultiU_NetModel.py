@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 
 from src.model.U_NetModel import U_Net
-from src.model.ConvLayers import CBNDLayer
 
 from src.training.out_conv_training.SortingMethod import BEST_PERM, get_mask_from_permutation
 
