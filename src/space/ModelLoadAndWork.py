@@ -83,6 +83,7 @@ def run_inference(model, image):
     visualized = segmentation_visualizer(
         image=vis_image,
         mask=fixed_output.cpu(),  # [1, H, W]
+        # mask=pred_mask.cpu(),  # [1, H, W]
     )
 
     # 检查visualized的形状并正确处理

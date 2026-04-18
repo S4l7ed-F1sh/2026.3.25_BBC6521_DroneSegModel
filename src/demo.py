@@ -22,19 +22,19 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 try:
     model = load_model()
     model_loaded = True
-    print("模型加载成功")
+    print("Model Loaded Successfully!")
 except Exception as e:
-    print(f"模型加载失败: {e}")
+    print(f"Error Loading Model: {e}")
     model_loaded = False
 
 
 def process_image(input_image):
     """处理图像分割的主函数"""
     if input_image is None:
-        return None, "请上传一张图片"
+        return None, "Update your UAV image"
 
     if not model_loaded:
-        return None, "模型未加载成功，请检查模型文件"
+        return None, "Model loading failed. Please check the server logs for details."
 
     try:
         # 确保输入图像是numpy数组格式 (H, W, 3)
@@ -45,13 +45,13 @@ def process_image(input_image):
         if len(input_image.shape) == 2:  # 灰度图
             input_image = np.stack([input_image] * 3, axis=-1)
         elif input_image.shape[-1] != 3:  # 不是RGB格式
-            raise ValueError(f"输入图像必须是RGB格式，当前形状: {input_image.shape}")
+            raise ValueError(f"The input image must be RGB format: {input_image.shape}")
 
         # 如果值范围在 [0, 255]，转换到 [0, 1]
         if input_image.max() > 1.0:
             input_image = input_image / 255.0
 
-        print(f"处理前图像形状: {input_image.shape}, 值范围: [{input_image.min():.3f}, {input_image.max():.3f}]")
+        print(f"Processing current image, shape: {input_image.shape}, value domain: [{input_image.min():.3f}, {input_image.max():.3f}]")
 
         # 运行推理
         result = run_inference(model, input_image)
@@ -62,12 +62,12 @@ def process_image(input_image):
         else:
             result_display = result.astype(np.uint8)
 
-        log_message = f"图像处理成功！原始尺寸: {input_image.shape}, 分割结果尺寸: {result_display.shape}"
+        log_message = f"Image processed successfully: {input_image.shape}, shape of the result: {result_display.shape}"
         return result_display, log_message
     except Exception as e:
-        error_msg = f"处理图像时发生错误: {str(e)}"
+        error_msg = f"Error processing image: {str(e)}"
         import traceback
-        error_msg += f"\n详细错误信息:\n{traceback.format_exc()}"
+        error_msg += f"\nDetails:\n{traceback.format_exc()}"
         return None, error_msg
 
 
@@ -219,23 +219,23 @@ def create_interface():
     """
 
     with gr.Blocks(
-            title="图像分割模型演示",
+            title="Drone Image Segmentation with MultiU-Net",
             css=custom_css
     ) as demo:
-        gr.Markdown("<h1 class='main-title'>MultiU-Net 图像分割演示</h1>")
-        gr.Markdown("<p class='subtitle'>上传一张图片，查看模型的分割结果</p>")
+        gr.Markdown("<h1 class='main-title'>MultiU-Net UAV Image Semantic Segmentation</h1>")
+        gr.Markdown("<p class='subtitle'>Upload your UAV image and press the button</p>")
 
         with gr.Row(elem_classes="image-container wrap"):
             with gr.Column(scale=1, min_width=500, elem_classes="image-column"):
-                input_image = gr.Image(label="上传原始图像", type="numpy", height=450, interactive=True)
+                input_image = gr.Image(label="Upload your UAV Image", type="numpy", height=450, interactive=True)
             with gr.Column(scale=1, min_width=500, elem_classes="image-column"):
-                segmented_image = gr.Image(label="分割结果", interactive=False, height=450)
+                segmented_image = gr.Image(label="Semantic Segmentation Result", interactive=False, height=450)
 
         with gr.Row(elem_classes="button-row"):
-            confirm_btn = gr.Button("开始分割", elem_classes="primary-button")
+            confirm_btn = gr.Button("Submit and process", elem_classes="primary-button")
 
         with gr.Row(elem_classes="log-container"):
-            log_output = gr.Textbox(label="处理日志", interactive=False, lines=5, max_lines=12, elem_classes="log-box")
+            log_output = gr.Textbox(label="logs", interactive=False, lines=5, max_lines=12, elem_classes="log-box")
 
         # 设置事件处理
         confirm_btn.click(
