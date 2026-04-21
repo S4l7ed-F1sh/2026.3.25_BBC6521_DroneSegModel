@@ -7,24 +7,29 @@ import os
 
 sys.path.append('./src')
 
-# 导入您提供的函数
+# 导入所需模块
 from src.model.MultiU_NetModel import MultiU_Net
 from src.model.MaskTransform import multi_class_post_process
 from src.model.MaskVisualization import segmentation_visualizer
 from src.dataset.FeatureExtraction import extract_features
 from src.space.ModelLoadAndWork import load_model, run_inference
 
-BEST_PERM = [1, 2, 0, 3, 4]
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# 加载模型
+model = None
+
 try:
     model = load_model()
     model_loaded = True
     print("Model Loaded Successfully!")
+except FileNotFoundError as e:
+    print(f"File Error Loading Model: {e}")
+    model_loaded = False
+except RuntimeError as e:
+    print(f"Runtime Error Loading Model: {e}")
+    model_loaded = False
 except Exception as e:
-    print(f"Error Loading Model: {e}")
+    print(f"Unexpected Error Loading Model: {e}")
     model_loaded = False
 
 
@@ -47,13 +52,21 @@ def process_image(input_image):
         elif input_image.shape[-1] != 3:  # 不是RGB格式
             raise ValueError(f"The input image must be RGB format: {input_image.shape}")
 
-        # 如果值范围在 [0, 255]，转换到 [0, 1]
-        if input_image.max() > 1.0:
-            input_image = input_image / 255.0
+        # 保持与 TestModel.py 一致：float32 + 0-255
+        if input_image.dtype != np.float32:
+            input_image = input_image.astype(np.float32)
 
-        print(f"Processing current image, shape: {input_image.shape}, value domain: [{input_image.min():.3f}, {input_image.max():.3f}]")
+        # 灰度 -> RGB
+        if input_image.ndim == 2:
+            input_image = np.stack([input_image] * 3, axis=-1)
+        # RGBA -> RGB
+        elif input_image.ndim == 3 and input_image.shape[-1] == 4:
+            input_image = input_image[..., :3]
+        elif input_image.ndim != 3 or input_image.shape[-1] != 3:
+            raise ValueError(f"The input image must be HxWx3 or HxWx4, got {input_image.shape}")
 
-        # 运行推理
+        print(
+            f"[demo] input range before inference: {input_image.min():.3f} ~ {input_image.max():.3f}, dtype={input_image.dtype}")
         result = run_inference(model, input_image)
 
         # 确保结果是正确的格式用于显示
@@ -253,7 +266,7 @@ if __name__ == "__main__":
     demo = create_interface()
     demo.launch(
         server_name="127.0.0.1",
-        server_port=7860,
+        server_port=8080,
         share=False,
         show_error=True
     )
